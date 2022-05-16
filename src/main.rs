@@ -30,15 +30,25 @@ fn main() {
             Vector2D::new(50.0, 50.0),
             Color::new(0, 255, 255),
         )),
-        Box::new(Line::new(
-            Vector2D::new(10.0, 5.0),
-            Vector2D::new(20.0, 60.0),
-            Color::new(0, 50, 0),
+        Box::new(Rect::new(
+            Vector2D::new(80.0, 30.0),
+            Vector2D::new(50.0, 50.0),
+            Color::new(255, 255, 255),
+        )),
+        Box::new(Rect::new(
+            Vector2D::new(20.0, 90.0),
+            Vector2D::new(50.0, 50.0),
+            Color::new(0, 0, 255),
+        )),
+        Box::new(Rect::new(
+            Vector2D::new(80.0, 90.0),
+            Vector2D::new(50.0, 50.0),
+            Color::new(0, 255, 0),
         )),
         Box::new(Line::new(
-            Vector2D::new(5.0, 2.5),
-            Vector2D::new(10.0, 30.0),
-            Color::new(100, 0, 0),
+            Vector2D::new(10.0, 5.0),
+            Vector2D::new(40.0, 120.0),
+            Color::new(255, 255, 255),
         )),
         Box::new(Circle::new(Vector2D::new(100.0, 100.0), 20.0, Color::new(255, 0, 0))),
     ]);
@@ -70,15 +80,15 @@ fn keyboard_input(scene: &mut Scene, window: &Window) {
         scene.offset_mut().x -= 1.0;
     }
 
-    if window.is_key_down(Key::NumPadPlus) {
-        *scene.scale_mut() += 0.1;
+    if window.is_key_down(Key::M) {
+        scene.change_scale(0.05)
     }
-    if window.is_key_down(Key::NumPadPlus) {
-        *scene.scale_mut() -= 0.1;
+    if window.is_key_down(Key::N) {
+        scene.change_scale(-0.05)
     }
 
     if window.is_key_down(Key::R) {
         *scene.offset_mut() = Vector2D::new(0.0, 0.0);
-        *scene.scale_mut() = 0.0;
+        *scene.scale_mut() = 1.0;
     }
 }

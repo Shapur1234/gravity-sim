@@ -1,3 +1,4 @@
+use std::fmt;
 use vector2d::Vector2D;
 
 // ----------------------------------------------------------------
@@ -5,8 +6,8 @@ use vector2d::Vector2D;
 pub trait Draw {
     fn draw(&self, frame_buffer: &mut FrameBuffer);
     fn draw_outline(&self, frame_buffer: &mut FrameBuffer);
-    // fn draw_offset(&self, offset_by: Vector2D<f32>, frame_buffer: &mut FrameBuffer);
     fn offset(&self, offset_by: Vector2D<f32>) -> Box<dyn Draw>;
+    fn scale(&self, times: f32) -> Box<dyn Draw>;
 }
 
 // ----------------------------------------------------------------
@@ -55,10 +56,30 @@ impl Scene {
     }
 
     // Methods
+    pub fn change_scale(&mut self, amount: f32) {
+        // TODO: FINISH
+
+        let scale_temp = (*self.scale() + amount).clamp(0.25, 2.5);
+        let scale_change = scale_temp - *self.scale();
+
+        // println!("{scale_change}");
+        println!("Screen: {:?}", self);
+
+        if scale_change != 0.0 {
+            *self.scale_mut() = scale_temp;
+        }
+    }
+
     pub fn draw(&self, frame_buffer: &mut FrameBuffer) {
         for i in self.contents() {
-            i.offset(*self.offset()).draw(frame_buffer);
+            i.offset(*self.offset()).scale(*self.scale()).draw(frame_buffer);
         }
+    }
+}
+
+impl fmt::Debug for Scene {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Scale: {:?}, Offset: {:?}", *self.scale(), *self.offset())
     }
 }
 
@@ -263,18 +284,19 @@ impl Draw for Line {
         frame_buffer.draw(self);
     }
 
-    // fn draw_offset(&self, offset_by: Vector2D<f32>, frame_buffer: &mut FrameBuffer) {
-    //     frame_buffer.draw(&Line::new(
-    //         *self.pos_1() + offset_by,
-    //         *self.pos_2() + offset_by,
-    //         *self.color(),
-    //     ))
-    // }
-
     fn offset(&self, offset_by: Vector2D<f32>) -> Box<dyn Draw> {
         Box::new(Line::new(
             *self.pos_1() + offset_by,
             *self.pos_2() + offset_by,
+            *self.color(),
+        ))
+    }
+
+    fn scale(&self, times: f32) -> Box<dyn Draw> {
+        // TODO: Fix
+        Box::new(Line::new(
+            Vector2D::new(self.pos_1().x * times, self.pos_1().y * times),
+            Vector2D::new(self.pos_2().x * times, self.pos_2().y * times),
             *self.color(),
         ))
     }
@@ -358,12 +380,17 @@ impl Draw for Rect {
         ));
     }
 
-    // fn draw_offset(&self, offset_by: Vector2D<f32>, frame_buffer: &mut FrameBuffer) {
-    //     frame_buffer.draw(&Rect::new(*self.pos() + offset_by, *self.size(), *self.color()))
-    // }
-
     fn offset(&self, offset_by: Vector2D<f32>) -> Box<dyn Draw> {
         Box::new(Rect::new(*self.pos() + offset_by, *self.size(), *self.color()))
+    }
+
+    fn scale(&self, times: f32) -> Box<dyn Draw> {
+        let new_size = Vector2D::new(self.size().x * times, self.size().x * times);
+        Box::new(Rect::new(
+            Vector2D::new(self.pos().x * times, self.pos().y * times),
+            new_size,
+            *self.color(),
+        ))
     }
 }
 
@@ -461,11 +488,15 @@ impl Draw for Circle {
         }
     }
 
-    // fn draw_offset(&self, offset_by: Vector2D<f32>, frame_buffer: &mut FrameBuffer) {
-    //     frame_buffer.draw(&Circle::new(*self.pos() + offset_by, *self.radius(), *self.color()))
-    // }
-
     fn offset(&self, offset_by: Vector2D<f32>) -> Box<dyn Draw> {
         Box::new(Circle::new(*self.pos() + offset_by, *self.radius(), *self.color()))
+    }
+
+    fn scale(&self, times: f32) -> Box<dyn Draw> {
+        Box::new(Circle::new(
+            Vector2D::new(self.pos().x * times, self.pos().y * times),
+            *self.radius() * times,
+            *self.color(),
+        ))
     }
 }
