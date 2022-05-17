@@ -3,6 +3,26 @@ use vector2d::Vector2D;
 
 // ----------------------------------------------------------------
 
+pub enum Shape {
+    Rect {
+        pos: Vector2D<f32>,
+        size: Vector2D<f32>,
+        color: Color,
+    },
+    Line {
+        pos_1: Vector2D<f32>,
+        pos_2: Vector2D<f32>,
+        color: Color,
+    },
+    Circle {
+        pos: Vector2D<f32>,
+        radius: f32,
+        color: Color,
+    },
+}
+
+// ----------------------------------------------------------------
+
 pub trait Draw {
     fn draw(&self, frame_buffer: &mut FrameBuffer);
     fn draw_outline(&self, frame_buffer: &mut FrameBuffer);
@@ -100,16 +120,23 @@ impl Scene {
                 .draw(frame_buffer);
         }
     }
+
+    pub fn to_framebuffer(&self) -> FrameBuffer {
+        let mut output = FrameBuffer::new(*self.res());
+        self.draw(&mut output);
+
+        output
+    }
 }
 
 impl fmt::Debug for Scene {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Res: {:?}, Scale: {:?}, Offset: {:?}",
-            *self.res(),
+            "Scale: {:?}, Offset: {:?}, Res: {:?}",
             *self.scale(),
-            *self.offset()
+            *self.offset(),
+            *self.res(),
         )
     }
 }

@@ -14,7 +14,6 @@ fn main() {
         WIDTH,
         HEIGHT,
         WindowOptions {
-            resize: true,
             scale_mode: ScaleMode::UpperLeft,
             ..WindowOptions::default()
         },
@@ -57,36 +56,32 @@ fn main() {
     );
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        let mut frame_buffer = FrameBuffer::new(Vector2D::new(WIDTH as u32, HEIGHT as u32));
-
         keyboard_input(&mut scene, &window);
 
-        scene.draw(&mut frame_buffer);
-
         window
-            .update_with_buffer(&frame_buffer.to_vec_u32(), WIDTH, HEIGHT)
+            .update_with_buffer(&scene.to_framebuffer().to_vec_u32(), WIDTH, HEIGHT)
             .unwrap();
     }
 }
 
 fn keyboard_input(scene: &mut Scene, window: &Window) {
     if window.is_key_down(Key::Down) {
-        scene.offset_mut().y += 5.0 / *scene.scale();
+        scene.offset_mut().y -= 5.0 / *scene.scale();
         // scene.offset_mut().y += 5.0;
         println!("{scene:?}");
     }
     if window.is_key_down(Key::Up) {
-        scene.offset_mut().y -= 5.0 / *scene.scale();
+        scene.offset_mut().y += 5.0 / *scene.scale();
         // scene.offset_mut().y -= 5.0;
         println!("{scene:?}");
     }
     if window.is_key_down(Key::Right) {
-        scene.offset_mut().x += 5.0 / *scene.scale();
+        scene.offset_mut().x -= 5.0 / *scene.scale();
         // scene.offset_mut().x += 5.0;
         println!("{scene:?}");
     }
     if window.is_key_down(Key::Left) {
-        scene.offset_mut().x -= 5.0 / *scene.scale();
+        scene.offset_mut().x += 5.0 / *scene.scale();
         // scene.offset_mut().x -= 5.0;
         println!("{scene:?}");
     }
