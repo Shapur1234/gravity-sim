@@ -15,17 +15,21 @@ pub trait Draw {
 #[derive()]
 pub struct Scene {
     contents: Vec<Box<dyn Draw>>,
-    scale: f32,
+    res: Vector2D<u32>,
     offset: Vector2D<f32>,
+    scale: f32,
+    base_scale: f32,
 }
 
 impl Scene {
     // Constructor
-    pub fn new(contents: Vec<Box<dyn Draw>>) -> Scene {
+    pub fn new(contents: Vec<Box<dyn Draw>>, res: Vector2D<u32>) -> Scene {
         Scene {
             contents,
-            scale: 1.0,
+            res,
             offset: Vector2D::new(0.0, 0.0),
+            scale: 1.0,
+            base_scale: (res.x as f32) / 500.0,
         }
     }
 
@@ -42,44 +46,71 @@ impl Scene {
         &self.offset
     }
 
+    pub fn res(&self) -> &Vector2D<u32> {
+        &self.res
+    }
+
+    pub fn base_scale(&self) -> &f32 {
+        &self.base_scale
+    }
+
     // Mutable access
     pub fn contents_mut(&mut self) -> &mut Vec<Box<dyn Draw>> {
         &mut self.contents
     }
 
-    pub fn scale_mut(&mut self) -> &mut f32 {
-        &mut self.scale
-    }
+    // pub fn scale_mut(&mut self) -> &mut f32 {
+    //     &mut self.scale
+    // }
 
     pub fn offset_mut(&mut self) -> &mut Vector2D<f32> {
         &mut self.offset
     }
 
+    // Setters
+    pub fn set_scale(&mut self, val: f32) {
+        self.scale = val.clamp(0.2, 5.0)
+    }
+
+    // pub fn set_offset(&mut self, val: Vector2D<f32>) {
+    //     self.offset = val
+    // }
+
     // Methods
     pub fn change_scale(&mut self, amount: f32) {
-        // TODO: FINISH
-
-        let scale_temp = (*self.scale() + amount).clamp(0.25, 2.5);
-        let scale_change = scale_temp - *self.scale();
-
-        // println!("{scale_change}");
-        println!("Screen: {:?}", self);
-
-        if scale_change != 0.0 {
-            *self.scale_mut() = scale_temp;
+        let scale_old = *self.scale();
+        self.set_scale(*self.scale() + amount);
+        {
+            let base_scale = *self.base_scale();
+            let scale = *self.scale();
+            let res = Vector2D::new(self.res().x as f32, self.res().y as f32);
+            if *self.scale() - scale_old != 0.0 {
+                *self.offset_mut() -= Vector2D::new(
+                    (res.x / (base_scale * scale_old)) - (res.x / (base_scale * scale)),
+                    (res.y / (base_scale * scale_old)) - (res.y / (base_scale * scale)),
+                );
+            }
         }
     }
 
     pub fn draw(&self, frame_buffer: &mut FrameBuffer) {
         for i in self.contents() {
-            i.offset(*self.offset()).scale(*self.scale()).draw(frame_buffer);
+            i.offset(*self.offset())
+                .scale(self.base_scale * *self.scale())
+                .draw(frame_buffer);
         }
     }
 }
 
 impl fmt::Debug for Scene {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Scale: {:?}, Offset: {:?}", *self.scale(), *self.offset())
+        write!(
+            f,
+            "Res: {:?}, Scale: {:?}, Offset: {:?}",
+            *self.res(),
+            *self.scale(),
+            *self.offset()
+        )
     }
 }
 
@@ -315,7 +346,11 @@ pub struct Rect {
 impl Rect {
     // Constructor
     pub fn new(pos: Vector2D<f32>, size: Vector2D<f32>, color: Color) -> Rect {
-        Rect { pos, size, color }
+        Rect {
+            pos,
+            size: Vector2D::new(size.x.abs(), size.y.abs()),
+            color,
+        }
     }
 
     // Immutable access
@@ -336,12 +371,17 @@ impl Rect {
         &mut self.pos
     }
 
-    pub fn size_mut(&mut self) -> &mut Vector2D<f32> {
-        &mut self.size
-    }
+    // pub fn size_mut(&mut self) -> &mut Vector2D<f32> {
+    //     &mut self.size
+    // }
 
     pub fn color_mut(&mut self) -> &mut Color {
         &mut self.color
+    }
+
+    // Setters
+    pub fn set_size(&mut self, val: Vector2D<f32>) {
+        self.size = Vector2D::new(val.x.abs(), val.y.abs())
     }
 }
 
@@ -432,12 +472,17 @@ impl Circle {
         &mut self.pos
     }
 
-    pub fn radius_mut(&mut self) -> &mut f32 {
-        &mut self.radius
-    }
+    // pub fn radius_mut(&mut self) -> &mut f32 {
+    //     &mut self.radius
+    // }
 
     pub fn color_mut(&mut self) -> &mut Color {
         &mut self.color
+    }
+
+    // Setters
+    pub fn set_radius(&mut self, val: f32) {
+        self.radius = val.abs()
     }
 }
 
