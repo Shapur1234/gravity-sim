@@ -3,26 +3,6 @@ use vector2d::Vector2D;
 
 // ----------------------------------------------------------------
 
-pub enum Shape {
-    Rect {
-        pos: Vector2D<f32>,
-        size: Vector2D<f32>,
-        color: Color,
-    },
-    Line {
-        pos_1: Vector2D<f32>,
-        pos_2: Vector2D<f32>,
-        color: Color,
-    },
-    Circle {
-        pos: Vector2D<f32>,
-        radius: f32,
-        color: Color,
-    },
-}
-
-// ----------------------------------------------------------------
-
 pub trait Draw {
     fn draw(&self, frame_buffer: &mut FrameBuffer);
     fn draw_outline(&self, frame_buffer: &mut FrameBuffer);
@@ -42,6 +22,7 @@ pub struct Scene {
     base_scale: f32,
 }
 
+#[allow(dead_code)]
 impl Scene {
     // Constructor
     pub fn new(
@@ -96,26 +77,22 @@ impl Scene {
 
     // Setters
     pub fn set_scale(&mut self, val: f32) {
-        match *self.min_max_scale() {
+        match self.min_max_scale {
             Some(x) => self.scale = val.clamp(x.x, x.y),
             None => self.scale = val,
         }
     }
 
-    // pub fn set_offset(&mut self, val: Vector2D<f32>) {
-    //     self.offset = val
-    // }
-
     // Methods
     pub fn change_scale(&mut self, amount: f32) {
-        let scale_old = *self.scale();
-        self.set_scale(*self.scale() + amount);
+        let scale_old = self.scale;
+        self.set_scale(self.scale + amount);
         {
             let base_scale = self.base_scale;
-            let scale = *self.scale();
-            let res = Vector2D::new(self.res().x as f32, self.res().y as f32);
-            if *self.scale() - scale_old != 0.0 {
-                *self.offset_mut() -= Vector2D::new(
+            let scale = self.scale;
+            let res = Vector2D::new(self.res.x as f32, self.res.y as f32);
+            if self.scale - scale_old != 0.0 {
+                self.offset -= Vector2D::new(
                     (res.x / (base_scale * scale_old)) - (res.x / (base_scale * scale)),
                     (res.y / (base_scale * scale_old)) - (res.y / (base_scale * scale)),
                 );
@@ -124,16 +101,16 @@ impl Scene {
     }
 
     pub fn draw(&self, frame_buffer: &mut FrameBuffer) {
-        self.contents().iter().for_each(|shape| {
+        self.contents.iter().for_each(|shape| {
             shape
-                .offset(*self.offset())
-                .scale(self.base_scale * *self.scale())
+                .offset(self.offset)
+                .scale(self.base_scale * self.scale)
                 .draw(frame_buffer)
         });
     }
 
     pub fn to_frame_buffer(&self) -> FrameBuffer {
-        let mut output = FrameBuffer::new(*self.res());
+        let mut output = FrameBuffer::new(self.res);
         self.draw(&mut output);
 
         output
@@ -145,9 +122,9 @@ impl fmt::Debug for Scene {
         write!(
             f,
             "Scale: {:?}, Offset: {:?}, Res: {:?}",
-            *self.scale(),
-            *self.offset(),
-            *self.res(),
+            self.scale,
+            self.offset,
+            self.res,
         )
     }
 }
@@ -181,12 +158,12 @@ impl FrameBuffer {
 
     // Methods
     pub fn contains_point(&self, point: Vector2D<f32>) -> bool {
-        point.x >= 0.0 && point.x < (self.size().x as f32) && point.y >= 0.0 && point.y < (self.size().y as f32)
+        point.x >= 0.0 && point.x < (self.size.x as f32) && point.y >= 0.0 && point.y < (self.size.y as f32)
     }
 
     pub fn set_pixel(&mut self, point: Vector2D<f32>, color: Color) {
         if self.contains_point(point) {
-            let width = self.size().x as u32; // Dunno why I have to do that
+            let width = self.size.x as u32; // Dunno why I have to do that
             self.buffer[(((point.y as u32) * width) + (point.x as u32)) as usize] = color;
         }
     }
@@ -201,15 +178,15 @@ impl FrameBuffer {
 
     // Casting
     pub fn to_vec_u8(&self, transparency: bool) -> Vec<u8> {
-        let output_length = self.buffer().len();
+        let output_length = self.buffer.len();
         let mut output: Vec<u8> = Vec::with_capacity(output_length * (if transparency { 4 } else { 3 }));
 
         for i in 0..(output_length * (if transparency { 4 } else { 3 })) {
-            let current_color = self.buffer()[i / (if transparency { 4 } else { 3 })];
+            let current_color = self.buffer[i / (if transparency { 4 } else { 3 })];
 
-            output.push(*current_color.r());
-            output.push(*current_color.g());
-            output.push(*current_color.b());
+            output.push(current_color.r);
+            output.push(current_color.g);
+            output.push(current_color.b);
             if transparency {
                 output.push(255);
             }
@@ -218,7 +195,7 @@ impl FrameBuffer {
     }
 
     pub fn to_vec_u32(&self) -> Vec<u32> {
-        self.buffer().iter().map(|x| x.to_u32()).collect()
+        self.buffer.iter().map(|x| x.to_u32()).collect()
     }
 }
 
@@ -266,7 +243,7 @@ impl Color {
 
     // Methods
     pub fn to_u32(&self) -> u32 {
-        ((*self.r() as u32) << 16) | ((*self.g() as u32) << 8) | (*self.b() as u32)
+        ((self.r as u32) << 16) | ((self.g as u32) << 8) | (self.b as u32)
     }
 }
 
@@ -315,14 +292,14 @@ impl Line {
 
 impl Draw for Line {
     fn draw(&self, frame_buffer: &mut FrameBuffer) {
-        let (mut x0, mut y0) = (self.pos_1().x as i32, self.pos_1().y as i32);
-        let (x1, y1) = (self.pos_2().x as i32, self.pos_2().y as i32);
+        let (mut x0, mut y0) = (self.pos_1.x as i32, self.pos_1.y as i32);
+        let (x1, y1) = (self.pos_2.x as i32, self.pos_2.y as i32);
         let (dx, dy) = ((x1 - x0).abs(), -(y1 - y0).abs());
         let (sx, sy) = (if x0 < x1 { 1 } else { -1 }, if y0 < y1 { 1 } else { -1 });
         let mut error = dx + dy;
 
         loop {
-            frame_buffer.set_pixel(Vector2D::new(x0 as f32, y0 as f32), *self.color());
+            frame_buffer.set_pixel(Vector2D::new(x0 as f32, y0 as f32), self.color);
 
             if x0 == x1 && y0 == y1 {
                 break;
@@ -351,33 +328,19 @@ impl Draw for Line {
 
     fn offset(&self, offset_by: Vector2D<f32>) -> Box<dyn Draw> {
         Box::new(Line::new(
-            *self.pos_1() + offset_by,
-            *self.pos_2() + offset_by,
-            *self.color(),
+            self.pos_1 + offset_by,
+            self.pos_2 + offset_by,
+            self.color,
         ))
     }
 
     fn scale(&self, times: f32) -> Box<dyn Draw> {
-        let under_angle = angle_between_points(self.pos_1(), self.pos_2());
-        let distance = distance_between_points(self.pos_1(), self.pos_2()) * times;
-
         Box::new(Line::new(
-            Vector2D::new(self.pos_1().x * times, self.pos_1().y * times),
-            Vector2D::new(
-                (self.pos_1().x * times) + (under_angle.cos() * distance),
-                (self.pos_1().y * times) + (under_angle.sin() * distance),
-            ),
-            *self.color(),
+            Vector2D::new(self.pos_1.x * times, self.pos_1.y * times),
+            Vector2D::new(self.pos_2.x * times, self.pos_2.y * times),
+            self.color,
         ))
     }
-}
-
-fn distance_between_points(from: &Vector2D<f32>, to: &Vector2D<f32>) -> f32 {
-    ((to.x - from.x).powf(2.0) + (to.y - from.y).powf(2.0)).sqrt()
-}
-
-fn angle_between_points(from: &Vector2D<f32>, to: &Vector2D<f32>) -> f32 {
-    (to.y - from.y).atan2(to.x - from.x)
 }
 
 // ----------------------------------------------------------------
@@ -418,10 +381,6 @@ impl Rect {
         &mut self.pos
     }
 
-    // pub fn size_mut(&mut self) -> &mut Vector2D<f32> {
-    //     &mut self.size
-    // }
-
     pub fn color_mut(&mut self) -> &mut Color {
         &mut self.color
     }
@@ -434,11 +393,11 @@ impl Rect {
 
 impl Draw for Rect {
     fn draw(&self, frame_buffer: &mut FrameBuffer) {
-        for y in 0..(self.size().y as usize) {
-            for x in 0..(self.size().x as usize) {
+        for y in 0..(self.size.y as usize) {
+            for x in 0..(self.size.x as usize) {
                 frame_buffer.set_pixel(
                     Vector2D::new((x as f32) + self.pos.x, (y as f32) + self.pos.y),
-                    *self.color(),
+                    self.color,
                 )
             }
         }
@@ -446,37 +405,37 @@ impl Draw for Rect {
 
     fn draw_outline(&self, frame_buffer: &mut FrameBuffer) {
         frame_buffer.draw(&Line::new(
-            *self.pos(),
-            Vector2D::new(self.pos().x + self.size().x, self.pos().y),
-            *self.color(),
+            self.pos,
+            Vector2D::new(self.pos.x + self.size.x, self.pos.y),
+            self.color,
         ));
         frame_buffer.draw(&Line::new(
-            *self.pos(),
-            Vector2D::new(self.pos().x, self.pos().y + self.size().y),
-            *self.color(),
+            self.pos,
+            Vector2D::new(self.pos.x, self.pos.y + self.size.y),
+            self.color,
         ));
         frame_buffer.draw(&Line::new(
-            Vector2D::new(self.pos().x + self.size().x, self.pos().y),
-            *self.pos() + *self.size(),
-            *self.color(),
+            Vector2D::new(self.pos.x + self.size.x, self.pos.y),
+            self.pos + self.size,
+            self.color,
         ));
         frame_buffer.draw(&Line::new(
-            Vector2D::new(self.pos().x, self.pos().y + self.size().y),
-            *self.pos() + *self.size(),
-            *self.color(),
+            Vector2D::new(self.pos.x, self.pos.y + self.size.y),
+            self.pos + self.size,
+            self.color,
         ));
     }
 
     fn offset(&self, offset_by: Vector2D<f32>) -> Box<dyn Draw> {
-        Box::new(Rect::new(*self.pos() + offset_by, *self.size(), *self.color()))
+        Box::new(Rect::new(self.pos + offset_by, self.size, self.color))
     }
 
     fn scale(&self, times: f32) -> Box<dyn Draw> {
-        let new_size = Vector2D::new(self.size().x * times, self.size().x * times);
+        let new_size = Vector2D::new(self.size.x * times, self.size.x * times);
         Box::new(Rect::new(
-            Vector2D::new(self.pos().x * times, self.pos().y * times),
+            Vector2D::new(self.pos.x * times, self.pos.y * times),
             new_size,
-            *self.color(),
+            self.color,
         ))
     }
 }
@@ -519,10 +478,6 @@ impl Circle {
         &mut self.pos
     }
 
-    // pub fn radius_mut(&mut self) -> &mut f32 {
-    //     &mut self.radius
-    // }
-
     pub fn color_mut(&mut self) -> &mut Color {
         &mut self.color
     }
@@ -535,12 +490,12 @@ impl Circle {
 
 impl Draw for Circle {
     fn draw(&self, frame_buffer: &mut FrameBuffer) {
-        for y in -(*self.radius() as isize)..(*self.radius() as isize) {
-            for x in -(*self.radius() as isize)..(*self.radius() as isize) {
-                if (x.pow(2) + y.pow(2)) <= (*self.radius() as isize).pow(2) {
+        for y in -(self.radius as isize)..(self.radius as isize) {
+            for x in -(self.radius as isize)..(self.radius as isize) {
+                if (x.pow(2) + y.pow(2)) <= (self.radius as isize).pow(2) {
                     frame_buffer.set_pixel(
-                        Vector2D::new(self.pos().x + (x as f32), self.pos().y + (y as f32)),
-                        *self.color(),
+                        Vector2D::new(self.pos.x + (x as f32), self.pos.y + (y as f32)),
+                        self.color,
                     )
                 }
             }
@@ -559,14 +514,14 @@ impl Draw for Circle {
             frame_buffer.set_pixel(Vector2D::new((c.x - p.y) as f32, (c.y - p.x) as f32), color);
         }
 
-        if *self.radius() < 2.0 {
-            frame_buffer.set_pixel(*self.pos(), *self.color())
+        if self.radius < 2.0 {
+            frame_buffer.set_pixel(self.pos, self.color)
         } else {
-            let center_pos: Vector2D<i32> = Vector2D::new(self.pos().x as i32, self.pos().y as i32);
-            let mut p: Vector2D<i32> = Vector2D::new(0, *self.radius() as i32);
-            let mut d: i32 = 3 - 2 * (*self.radius() as i32);
+            let center_pos: Vector2D<i32> = Vector2D::new(self.pos.x as i32, self.pos().y as i32);
+            let mut p: Vector2D<i32> = Vector2D::new(0, self.radius as i32);
+            let mut d: i32 = 3 - 2 * (self.radius as i32);
 
-            draw_circle(center_pos, p, *self.color(), frame_buffer);
+            draw_circle(center_pos, p, self.color, frame_buffer);
             while p.y >= p.x {
                 p.x += 1;
                 if d > 0 {
@@ -575,20 +530,20 @@ impl Draw for Circle {
                 } else {
                     d += 4 * p.x + 6
                 }
-                draw_circle(center_pos, p, *self.color(), frame_buffer);
+                draw_circle(center_pos, p, self.color, frame_buffer);
             }
         }
     }
 
     fn offset(&self, offset_by: Vector2D<f32>) -> Box<dyn Draw> {
-        Box::new(Circle::new(*self.pos() + offset_by, *self.radius(), *self.color()))
+        Box::new(Circle::new(self.pos + offset_by, self.radius, self.color))
     }
 
     fn scale(&self, times: f32) -> Box<dyn Draw> {
         Box::new(Circle::new(
-            Vector2D::new(self.pos().x * times, self.pos().y * times),
-            *self.radius() * times,
-            *self.color(),
+            Vector2D::new(self.pos.x * times, self.pos.y * times),
+            self.radius * times,
+            self.color,
         ))
     }
 }
