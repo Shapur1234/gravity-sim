@@ -122,9 +122,7 @@ impl fmt::Debug for Scene {
         write!(
             f,
             "Scale: {:?}, Offset: {:?}, Res: {:?}",
-            self.scale,
-            self.offset,
-            self.res,
+            self.scale, self.offset, self.res,
         )
     }
 }
@@ -327,11 +325,7 @@ impl Draw for Line {
     }
 
     fn offset(&self, offset_by: Vector2D<f32>) -> Box<dyn Draw> {
-        Box::new(Line::new(
-            self.pos_1 + offset_by,
-            self.pos_2 + offset_by,
-            self.color,
-        ))
+        Box::new(Line::new(self.pos_1 + offset_by, self.pos_2 + offset_by, self.color))
     }
 
     fn scale(&self, times: f32) -> Box<dyn Draw> {

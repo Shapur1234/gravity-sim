@@ -38,14 +38,19 @@ impl Simulation {
 
     // Methods
     pub fn shapes(&self) -> Vec<Box<dyn graphics::Draw>> {
-        // self.bodies
-        //     .iter()
-        //     .map(|x| Box::new(x.shape(graphics::Color::new((255.0 / x.mass()) as u8, 0, 0))))
         let mut out: Vec<Box<dyn graphics::Draw>> = vec![];
-        for i in & self.bodies {
-            out.push(Box::new(i.shape(graphics::Color::new((255.0 / i.mass()) as u8, 0, 0))))
+        for i in &self.bodies {
+            out.push(Box::new(i.shape(graphics::Color::new(
+                (255.0 / i.mass()) as u8,
+                (255.0 / i.mass()) as u8,
+                (255.0 / i.mass()) as u8,
+            ))))
         }
         out
+    }
+
+    pub fn move_all(&mut self) {
+        self.bodies.iter_mut().for_each(|x| x.move_self())
     }
 }
 
@@ -84,6 +89,11 @@ impl Force {
     // Setters
     pub fn set_direction(&mut self, val: Vector2D<f32>) {
         self.direction = val.normalise()
+    }
+
+    // Methods
+    pub fn as_vector2d(&self) -> Vector2D<f32> {
+        Vector2D::new(self.direction.x * self.amplitude, self.direction.y * self.amplitude)
     }
 }
 
@@ -136,6 +146,10 @@ impl PhysicsBody {
     }
 
     // Methods
+    pub fn move_self(&mut self) {
+        self.pos += self.momentum.as_vector2d();
+    }
+
     pub fn shape(&self, color: graphics::Color) -> graphics::Circle {
         graphics::Circle::new(self.pos, self.radius, color)
     }

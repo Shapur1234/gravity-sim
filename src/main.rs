@@ -1,18 +1,17 @@
 mod graphics;
 mod simulation;
 
-// use graphics::*;
 use simulation::*;
 
 use minifb::{Key, ScaleMode, Window, WindowOptions};
-use std::env;
+use rand::prelude::*;
 use vector2d::Vector2D;
 
 const WIDTH: usize = 640;
 const HEIGHT: usize = 360;
 
 fn main() {
-    env::set_var("RUST_BACKTRACE", "1");
+    std::env::set_var("RUST_BACKTRACE", "1");
 
     let mut window = Window::new(
         "Noise Test - Press ESC to exit",
@@ -58,21 +57,45 @@ fn main() {
             // Box::new(Circle::new(Vector2D::new(100.0, 100.0), 20.0, Color::new(255, 0, 0))),
         ],
         Vector2D::new(WIDTH as u32, HEIGHT as u32),
-        1.0,
-        Some(Vector2D::new(0.25, 5.0)),
+        0.8,
+        Some(Vector2D::new(0.1, 5.0)),
     );
     let mut simulation = Simulation::new(
-        vec![PhysicsBody::new(
-            Vector2D::new(20.0, 40.0),
-            5.0,
-            15.0,
-            Force::new(Vector2D::new(0.8, 0.1), 2.0),
-        )],
+        vec![
+            PhysicsBody::new(
+                Vector2D::new(20.0, 40.0),
+                0.5,
+                15.0,
+                Force::new(
+                    Vector2D::new(rand_minus_to_plus(), rand_minus_to_plus()),
+                    rand_minus_to_plus() * 2.0,
+                ),
+            ),
+            PhysicsBody::new(
+                Vector2D::new(250.0, 150.0),
+                4.0,
+                50.0,
+                Force::new(
+                    Vector2D::new(rand_minus_to_plus(), rand_minus_to_plus()),
+                    rand_minus_to_plus(),
+                ),
+            ),
+            PhysicsBody::new(
+                Vector2D::new(62.0, 250.0),
+                1.5,
+                30.0,
+                Force::new(
+                    Vector2D::new(rand_minus_to_plus(), rand_minus_to_plus()),
+                    rand_minus_to_plus() * 4.0,
+                ),
+            ),
+        ],
         None,
     );
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         keyboard_input(&mut scene, &window);
+        simulation.move_all();
 
         *scene.contents_mut() = simulation.shapes();
 
@@ -107,4 +130,9 @@ fn keyboard_input(scene: &mut graphics::Scene, window: &Window) {
         *scene.offset_mut() = Vector2D::new(0.0, 0.0);
         scene.set_scale(1.0)
     }
+}
+
+fn rand_minus_to_plus() -> f32 {
+    let mut rng = rand::thread_rng();
+    rng.gen::<f32>() * if rng.gen() { -1.0 } else { 1.0 }
 }
