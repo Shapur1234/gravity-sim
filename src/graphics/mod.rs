@@ -38,17 +38,24 @@ pub struct Scene {
     res: Vector2D<u32>,
     offset: Vector2D<f32>,
     scale: f32,
+    min_max_scale: Option<Vector2D<f32>>,
     base_scale: f32,
 }
 
 impl Scene {
     // Constructor
-    pub fn new(contents: Vec<Box<dyn Draw>>, res: Vector2D<u32>) -> Scene {
+    pub fn new(
+        contents: Vec<Box<dyn Draw>>,
+        res: Vector2D<u32>,
+        scale: f32,
+        min_max_scale: Option<Vector2D<f32>>,
+    ) -> Scene {
         Scene {
             contents,
             res,
             offset: Vector2D::new(0.0, 0.0),
-            scale: 1.0,
+            scale,
+            min_max_scale,
             base_scale: (res.x as f32) / 500.0,
         }
     }
@@ -58,20 +65,20 @@ impl Scene {
         &self.contents
     }
 
-    pub fn scale(&self) -> &f32 {
-        &self.scale
+    pub fn res(&self) -> &Vector2D<u32> {
+        &self.res
     }
 
     pub fn offset(&self) -> &Vector2D<f32> {
         &self.offset
     }
 
-    pub fn res(&self) -> &Vector2D<u32> {
-        &self.res
+    pub fn scale(&self) -> &f32 {
+        &self.scale
     }
 
-    pub fn base_scale(&self) -> &f32 {
-        &self.base_scale
+    pub fn min_max_scale(&self) -> &Option<Vector2D<f32>> {
+        &self.min_max_scale
     }
 
     // Mutable access
@@ -79,17 +86,20 @@ impl Scene {
         &mut self.contents
     }
 
-    // pub fn scale_mut(&mut self) -> &mut f32 {
-    //     &mut self.scale
-    // }
-
     pub fn offset_mut(&mut self) -> &mut Vector2D<f32> {
         &mut self.offset
     }
 
+    pub fn min_max_scale_mut(&mut self) -> &mut Option<Vector2D<f32>> {
+        &mut self.min_max_scale
+    }
+
     // Setters
     pub fn set_scale(&mut self, val: f32) {
-        self.scale = val.clamp(0.2, 5.0)
+        match *self.min_max_scale() {
+            Some(x) => self.scale = val.clamp(x.x, x.y),
+            None => self.scale = val,
+        }
     }
 
     // pub fn set_offset(&mut self, val: Vector2D<f32>) {
@@ -101,7 +111,7 @@ impl Scene {
         let scale_old = *self.scale();
         self.set_scale(*self.scale() + amount);
         {
-            let base_scale = *self.base_scale();
+            let base_scale = self.base_scale;
             let scale = *self.scale();
             let res = Vector2D::new(self.res().x as f32, self.res().y as f32);
             if *self.scale() - scale_old != 0.0 {
@@ -114,14 +124,15 @@ impl Scene {
     }
 
     pub fn draw(&self, frame_buffer: &mut FrameBuffer) {
-        for i in self.contents() {
-            i.offset(*self.offset())
+        self.contents().iter().for_each(|shape| {
+            shape
+                .offset(*self.offset())
                 .scale(self.base_scale * *self.scale())
-                .draw(frame_buffer);
-        }
+                .draw(frame_buffer)
+        });
     }
 
-    pub fn to_framebuffer(&self) -> FrameBuffer {
+    pub fn to_frame_buffer(&self) -> FrameBuffer {
         let mut output = FrameBuffer::new(*self.res());
         self.draw(&mut output);
 
@@ -207,7 +218,7 @@ impl FrameBuffer {
     }
 
     pub fn to_vec_u32(&self) -> Vec<u32> {
-        self.buffer().into_iter().map(|x| x.to_u32()).collect()
+        self.buffer().iter().map(|x| x.to_u32()).collect()
     }
 }
 
@@ -304,36 +315,32 @@ impl Line {
 
 impl Draw for Line {
     fn draw(&self, frame_buffer: &mut FrameBuffer) {
-        let (dx, dy) = (
-            (self.pos_1().x - self.pos_2().x).abs(),
-            -(self.pos_1().y - self.pos_2().y).abs(),
-        );
-        let (sx, sy) = (
-            (if self.pos_1().x < self.pos_2().x { 1.0 } else { -1.0 }),
-            (if self.pos_1().y < self.pos_2().y { 1.0 } else { -1.0 }),
-        );
+        let (mut x0, mut y0) = (self.pos_1().x as i32, self.pos_1().y as i32);
+        let (x1, y1) = (self.pos_2().x as i32, self.pos_2().y as i32);
+        let (dx, dy) = ((x1 - x0).abs(), -(y1 - y0).abs());
+        let (sx, sy) = (if x0 < x1 { 1 } else { -1 }, if y0 < y1 { 1 } else { -1 });
         let mut error = dx + dy;
 
-        let mut point = *self.pos_1();
-        for _ in 0..(((frame_buffer.size().x.pow(2) * frame_buffer.size().y.pow(2)) as f32).powf(0.5) as usize) {
-            frame_buffer.set_pixel(point, *self.color());
+        loop {
+            frame_buffer.set_pixel(Vector2D::new(x0 as f32, y0 as f32), *self.color());
 
-            if point.x == self.pos_2().x && point.y == self.pos_2().y {
+            if x0 == x1 && y0 == y1 {
                 break;
             }
-            if (error * 2.0) >= dy {
-                if point.x == self.pos_2().x {
+            let e2 = 2 * error;
+            if e2 >= dy {
+                if x0 == x1 {
                     break;
                 }
                 error += dy;
-                point.x += sx;
+                x0 += sx
             }
-            if (error * 2.0) <= dx {
-                if point.y == self.pos_2().y {
+            if e2 <= dx {
+                if y0 == y1 {
                     break;
                 }
                 error += dx;
-                point.y += sy;
+                y0 += sy
             }
         }
     }
@@ -351,13 +358,26 @@ impl Draw for Line {
     }
 
     fn scale(&self, times: f32) -> Box<dyn Draw> {
-        // TODO: Fix
+        let under_angle = angle_between_points(self.pos_1(), self.pos_2());
+        let distance = distance_between_points(self.pos_1(), self.pos_2()) * times;
+
         Box::new(Line::new(
             Vector2D::new(self.pos_1().x * times, self.pos_1().y * times),
-            Vector2D::new(self.pos_2().x * times, self.pos_2().y * times),
+            Vector2D::new(
+                (self.pos_1().x * times) + (under_angle.cos() * distance),
+                (self.pos_1().y * times) + (under_angle.sin() * distance),
+            ),
             *self.color(),
         ))
     }
+}
+
+fn distance_between_points(from: &Vector2D<f32>, to: &Vector2D<f32>) -> f32 {
+    ((to.x - from.x).powf(2.0) + (to.y - from.y).powf(2.0)).sqrt()
+}
+
+fn angle_between_points(from: &Vector2D<f32>, to: &Vector2D<f32>) -> f32 {
+    (to.y - from.y).atan2(to.x - from.x)
 }
 
 // ----------------------------------------------------------------

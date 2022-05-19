@@ -3,12 +3,15 @@ mod graphics;
 use graphics::*;
 
 use minifb::{Key, ScaleMode, Window, WindowOptions};
+use std::env;
 use vector2d::Vector2D;
 
 const WIDTH: usize = 640;
 const HEIGHT: usize = 360;
 
 fn main() {
+    env::set_var("RUST_BACKTRACE", "1");
+
     let mut window = Window::new(
         "Noise Test - Press ESC to exit",
         WIDTH,
@@ -45,21 +48,23 @@ fn main() {
                 Vector2D::new(50.0, 50.0),
                 Color::new(0, 255, 0),
             )),
-            // Box::new(Line::new(
-            //     Vector2D::new(10.0, 5.0),
-            //     Vector2D::new(40.0, 120.0),
-            //     Color::new(255, 255, 255),
-            // )),
+            Box::new(Line::new(
+                Vector2D::new(10.0, 5.0),
+                Vector2D::new(40.0, 120.0),
+                Color::new(255, 255, 255),
+            )),
             Box::new(Circle::new(Vector2D::new(100.0, 100.0), 20.0, Color::new(255, 0, 0))),
         ],
         Vector2D::new(WIDTH as u32, HEIGHT as u32),
+        1.0,
+        Some(Vector2D::new(0.25, 5.0)),
     );
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         keyboard_input(&mut scene, &window);
 
         window
-            .update_with_buffer(&scene.to_framebuffer().to_vec_u32(), WIDTH, HEIGHT)
+            .update_with_buffer(&scene.to_frame_buffer().to_vec_u32(), WIDTH, HEIGHT)
             .unwrap();
     }
 }
