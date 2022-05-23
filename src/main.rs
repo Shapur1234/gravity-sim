@@ -4,17 +4,16 @@ mod simulation;
 use simulation::*;
 
 use minifb::{Key, ScaleMode, Window, WindowOptions};
-use rand::prelude::*;
 use vector2d::Vector2D;
 
-const WIDTH: usize = 640;
-const HEIGHT: usize = 360;
+const WIDTH: usize = 1280;
+const HEIGHT: usize = 720;
 
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
 
     let mut window = Window::new(
-        "Noise Test - Press ESC to exit",
+        "Press ESC to exit",
         WIDTH,
         HEIGHT,
         WindowOptions {
@@ -28,74 +27,16 @@ fn main() {
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
     let mut scene = graphics::Scene::new(
-        vec![
-            // Box::new(Rect::new(
-            //     Vector2D::new(30.0, 30.0),
-            //     Vector2D::new(50.0, 50.0),
-            //     Color::new(0, 255, 255),
-            // )),
-            // Box::new(Rect::new(
-            //     Vector2D::new(80.0, 30.0),
-            //     Vector2D::new(50.0, 50.0),
-            //     Color::new(255, 255, 255),
-            // )),
-            // Box::new(Rect::new(
-            //     Vector2D::new(20.0, 90.0),
-            //     Vector2D::new(50.0, 50.0),
-            //     Color::new(0, 0, 255),
-            // )),
-            // Box::new(Rect::new(
-            //     Vector2D::new(80.0, 90.0),
-            //     Vector2D::new(50.0, 50.0),
-            //     Color::new(0, 255, 0),
-            // )),
-            // Box::new(Line::new(
-            //     Vector2D::new(10.0, 5.0),
-            //     Vector2D::new(40.0, 120.0),
-            //     Color::new(255, 255, 255),
-            // )),
-            // Box::new(Circle::new(Vector2D::new(100.0, 100.0), 20.0, Color::new(255, 0, 0))),
-        ],
-        Vector2D::new(WIDTH as u32, HEIGHT as u32),
-        0.8,
+        vec![],
+        Vector2D::new(WIDTH as u64, HEIGHT as u64),
+        1.0,
         Some(Vector2D::new(0.1, 5.0)),
     );
-    let mut simulation = Simulation::new(
-        vec![
-            PhysicsBody::new(
-                Vector2D::new(20.0, 40.0),
-                0.5,
-                15.0,
-                Force::new(
-                    Vector2D::new(rand_minus_to_plus(), rand_minus_to_plus()),
-                    rand_minus_to_plus() * 2.0,
-                ),
-            ),
-            PhysicsBody::new(
-                Vector2D::new(250.0, 150.0),
-                4.0,
-                50.0,
-                Force::new(
-                    Vector2D::new(rand_minus_to_plus(), rand_minus_to_plus()),
-                    rand_minus_to_plus(),
-                ),
-            ),
-            PhysicsBody::new(
-                Vector2D::new(62.0, 250.0),
-                1.5,
-                30.0,
-                Force::new(
-                    Vector2D::new(rand_minus_to_plus(), rand_minus_to_plus()),
-                    rand_minus_to_plus() * 4.0,
-                ),
-            ),
-        ],
-        None,
-    );
+    let mut simulation = Simulation::new((0..10).into_iter().map(|_| PhysicsBody::new_rand()).collect(), None);
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        keyboard_input(&mut scene, &window);
-        simulation.move_all();
+        keyboard_input(&mut scene, &mut simulation, &window);
+        simulation.physics_tick();
 
         *scene.contents_mut() = simulation.shapes();
 
@@ -105,7 +46,7 @@ fn main() {
     }
 }
 
-fn keyboard_input(scene: &mut graphics::Scene, window: &Window) {
+fn keyboard_input(scene: &mut graphics::Scene, simulation: &mut Simulation, window: &Window) {
     if window.is_key_down(Key::Down) {
         scene.offset_mut().y -= 5.0 / *scene.scale();
     }
@@ -128,11 +69,7 @@ fn keyboard_input(scene: &mut graphics::Scene, window: &Window) {
 
     if window.is_key_down(Key::R) {
         *scene.offset_mut() = Vector2D::new(0.0, 0.0);
-        scene.set_scale(1.0)
+        scene.set_scale(1.0);
+        *simulation.bodies_mut() = (0..10).into_iter().map(|_| PhysicsBody::new_rand()).collect();
     }
-}
-
-fn rand_minus_to_plus() -> f32 {
-    let mut rng = rand::thread_rng();
-    rng.gen::<f32>() * if rng.gen() { -1.0 } else { 1.0 }
 }
