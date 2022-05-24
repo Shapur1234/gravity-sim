@@ -85,16 +85,6 @@ impl Scene {
 
     // Methods
     pub fn change_scale(&mut self, amount: f64) {
-        // println!(
-        //     "{:?}, {:?}, {:?}",
-        //     self.res,
-        //     self.base_scale,
-        //     Vector2D::new(
-        //         (self.res.x as f64) * self.base_scale,
-        //         (self.res.y as f64) * self.base_scale
-        //     )
-        // );
-
         let scale_old = self.scale;
         self.set_scale(self.scale + amount);
         {

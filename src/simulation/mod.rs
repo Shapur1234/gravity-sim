@@ -44,9 +44,7 @@ impl Simulation {
     pub fn shapes(&self) -> Vec<Box<dyn graphics::Draw>> {
         let mut out: Vec<Box<dyn graphics::Draw>> = vec![];
         for i in &self.bodies {
-            i.shape(graphics::Color::new(255, 255, 255))
-                .into_iter()
-                .for_each(|x| out.push(x))
+            i.shape().into_iter().for_each(|x| out.push(x))
         }
         out
     }
@@ -63,11 +61,14 @@ impl Simulation {
     pub fn physics_tick(&mut self) {
         self.gravity_tick();
         self.movement_tick();
-        self.collision_tick();
+        // self.collision_tick();
     }
 
     pub fn movement_tick(&mut self) {
-        self.bodies.iter_mut().for_each(|x| x.move_self())
+        self.bodies.iter_mut().for_each(|x| {
+            x.move_self();
+            x.add_trail();
+        })
     }
 
     pub fn gravity_tick(&mut self) {
@@ -126,6 +127,15 @@ impl Force {
             amplitude: rng.gen::<f64>().abs(),
         }
     }
+    // pub fn new_rand() -> Force {
+    //     Force {
+    //         direction: Vector2D::new(
+    //             0.0,
+    //             0.0,
+    //         ),
+    //         amplitude: 0.0,
+    //     }
+    // }
 
     // Immutable access
     pub fn direction(&self) -> &Vector2D<f64> {
@@ -174,23 +184,27 @@ impl std::ops::AddAssign for Force {
 
 // ----------------------------------------------------------------
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PhysicsBody {
     pos: Vector2D<f64>,
     mass: f64,
     radius: f64,
     momentum: Force,
+    color: graphics::Color,
+    trail: Vec<Vector2D<f64>>,
 }
 
 #[allow(dead_code)]
 impl PhysicsBody {
     // Constructor
-    pub fn new(pos: Vector2D<f64>, mass: f64, momentum: Force) -> PhysicsBody {
+    pub fn new(pos: Vector2D<f64>, mass: f64, momentum: Force, color: graphics::Color) -> PhysicsBody {
         PhysicsBody {
             pos,
             mass,
             radius: mass / 5.0,
             momentum,
+            color,
+            trail: vec![],
         }
     }
 
@@ -203,6 +217,12 @@ impl PhysicsBody {
             mass,
             radius: mass / 5.0,
             momentum: Force::new_rand(),
+            color: graphics::Color::new(
+                (10.0 + rng.gen::<f64>() * 245.0) as u8,
+                (10.0 + rng.gen::<f64>() * 245.0) as u8,
+                (10.0 + rng.gen::<f64>() * 245.0) as u8,
+            ),
+            trail: vec![],
         }
     }
 
@@ -219,6 +239,14 @@ impl PhysicsBody {
         &self.momentum
     }
 
+    pub fn color(&self) -> &graphics::Color {
+        &self.color
+    }
+
+    pub fn trail(&self) -> &Vec<Vector2D<f64>> {
+        &self.trail
+    }
+
     // Mutable access
     pub fn pos_mut(&mut self) -> &mut Vector2D<f64> {
         &mut self.pos
@@ -232,23 +260,45 @@ impl PhysicsBody {
         &mut self.momentum
     }
 
+    pub fn color_mut(&mut self) -> &mut graphics::Color {
+        &mut self.color
+    }
+
     // Methods
     pub fn move_self(&mut self) {
         self.pos += self.momentum.as_vector2d();
     }
 
-    pub fn shape(&self, color: graphics::Color) -> Vec<Box<dyn graphics::Draw>> {
-        vec![
-            Box::new(graphics::Circle::new(self.pos, self.radius, color)),
+    pub fn add_trail(&mut self) {
+        self.trail.push(self.pos);
+
+        if self.trail.len() > 1000 {
+            self.trail.remove(0);
+        }
+    }
+
+    pub fn shape(&self) -> Vec<Box<dyn graphics::Draw>> {
+        let mut out: Vec<Box<dyn graphics::Draw>> = vec![
+            Box::new(graphics::Circle::new(self.pos, self.radius, self.color)),
             Box::new(graphics::Line::new(
                 self.pos,
                 Vector2D::new(
                     self.pos.x + (self.momentum.direction().x * self.momentum.amplitude() * 20.0),
                     self.pos.y + (self.momentum.direction().y * self.momentum.amplitude() * 20.0),
                 ),
-                graphics::Color::new(255, 0, 0),
+                graphics::Color::new(255, 255, 255),
             )),
-        ]
+        ];
+        for i in 1..self.trail.len() {
+            if i % 2 == 0 {
+                out.push(Box::new(graphics::Line::new(
+                    self.trail[i - 1],
+                    self.trail[i],
+                    self.color,
+                )))
+            }
+        }
+        out
     }
 
     pub fn intersects(&self, other: &Self) -> bool {

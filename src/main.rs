@@ -6,8 +6,9 @@ use simulation::*;
 use minifb::{Key, ScaleMode, Window, WindowOptions};
 use vector2d::Vector2D;
 
-const WIDTH: usize = 1280;
-const HEIGHT: usize = 720;
+const WIDTH: usize = 1920;
+const HEIGHT: usize = 1080;
+const NUM_OF_BODIES: usize = 100;
 
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
@@ -32,7 +33,7 @@ fn main() {
         1.0,
         Some(Vector2D::new(0.1, 5.0)),
     );
-    let mut simulation = Simulation::new((0..10).into_iter().map(|_| PhysicsBody::new_rand()).collect(), None);
+    let mut simulation = Simulation::new((0..NUM_OF_BODIES).into_iter().map(|_| PhysicsBody::new_rand()).collect(), None);
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         keyboard_input(&mut scene, &mut simulation, &window);
@@ -70,6 +71,6 @@ fn keyboard_input(scene: &mut graphics::Scene, simulation: &mut Simulation, wind
     if window.is_key_down(Key::R) {
         *scene.offset_mut() = Vector2D::new(0.0, 0.0);
         scene.set_scale(1.0);
-        *simulation.bodies_mut() = (0..10).into_iter().map(|_| PhysicsBody::new_rand()).collect();
+        *simulation.bodies_mut() = (0..NUM_OF_BODIES).into_iter().map(|_| PhysicsBody::new_rand()).collect();
     }
 }
