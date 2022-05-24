@@ -3,19 +3,19 @@ use itertools::Itertools;
 use rand::prelude::*;
 use vector2d::Vector2D;
 
-const DEFAULT_GRAV_CONSTANT: f64 = 0.01;
+const DEFAULT_GRAV_CONSTANT: f32 = 0.01;
 
 // ----------------------------------------------------------------
 
 pub struct Simulation {
     bodies: Vec<PhysicsBody>,
-    grav_constant: f64,
+    grav_constant: f32,
 }
 
 #[allow(dead_code)]
 impl Simulation {
     // Constructor
-    pub fn new(bodies: Vec<PhysicsBody>, grav_constant: Option<f64>) -> Simulation {
+    pub fn new(bodies: Vec<PhysicsBody>, grav_constant: Option<f32>) -> Simulation {
         Simulation {
             bodies,
             grav_constant: grav_constant.unwrap_or(DEFAULT_GRAV_CONSTANT),
@@ -27,7 +27,7 @@ impl Simulation {
         &self.bodies
     }
 
-    pub fn grav_constant(&self) -> &f64 {
+    pub fn grav_constant(&self) -> &f32 {
         &self.grav_constant
     }
 
@@ -36,7 +36,7 @@ impl Simulation {
         &mut self.bodies
     }
 
-    pub fn grav_constant_mut(&mut self) -> &mut f64 {
+    pub fn grav_constant_mut(&mut self) -> &mut f32 {
         &mut self.grav_constant
     }
 
@@ -52,7 +52,7 @@ impl Simulation {
     pub fn gravity_between(&self, body1: &PhysicsBody, body2: &PhysicsBody) -> Force {
         let dist_between = body1.distance_between(body2);
         Force::new(
-            -Vector2D::new(body1.pos().x - body2.pos().x, body1.pos().y - body2.pos().y).normalise(),
+            Vector2D::new(body1.pos().x - body2.pos().x, body1.pos().y - body2.pos().y).normalise(),
             (self.grav_constant * body1.mass() * body2.mass())
                 / ((if dist_between > 1.0 { dist_between } else { 1.0 }).powf(2.0)),
         )
@@ -75,7 +75,7 @@ impl Simulation {
         let bodies = self.bodies.to_vec();
 
         (0..self.bodies.len()).permutations(2).into_iter().for_each(|x| {
-            let grav_force_temp = self.gravity_between(&bodies[x[0]], &bodies[x[1]]);
+            let grav_force_temp = -self.gravity_between(&bodies[x[0]], &bodies[x[1]]);
             *self.bodies[x[0]].momentum_mut() += grav_force_temp;
         })
     }
@@ -101,14 +101,14 @@ impl Simulation {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Force {
-    direction: Vector2D<f64>,
-    amplitude: f64,
+    direction: Vector2D<f32>,
+    amplitude: f32,
 }
 
 #[allow(dead_code)]
 impl Force {
     // Constructor
-    pub fn new(direction: Vector2D<f64>, amplitude: f64) -> Force {
+    pub fn new(direction: Vector2D<f32>, amplitude: f32) -> Force {
         Force {
             direction: direction.normalise(),
             amplitude: amplitude.abs(),
@@ -120,11 +120,11 @@ impl Force {
 
         Force {
             direction: Vector2D::new(
-                rng.gen::<f64>() * if rng.gen() { -1.0 } else { 1.0 },
-                rng.gen::<f64>() * if rng.gen() { -1.0 } else { 1.0 },
+                rng.gen::<f32>() * if rng.gen() { -1.0 } else { 1.0 },
+                rng.gen::<f32>() * if rng.gen() { -1.0 } else { 1.0 },
             )
             .normalise(),
-            amplitude: rng.gen::<f64>().abs(),
+            amplitude: rng.gen::<f32>().abs(),
         }
     }
     // pub fn new_rand() -> Force {
@@ -138,25 +138,25 @@ impl Force {
     // }
 
     // Immutable access
-    pub fn direction(&self) -> &Vector2D<f64> {
+    pub fn direction(&self) -> &Vector2D<f32> {
         &self.direction
     }
 
-    pub fn amplitude(&self) -> &f64 {
+    pub fn amplitude(&self) -> &f32 {
         &self.amplitude
     }
 
     // Setters
-    pub fn set_direction(&mut self, val: Vector2D<f64>) {
+    pub fn set_direction(&mut self, val: Vector2D<f32>) {
         self.direction = val.normalise()
     }
 
-    pub fn set_amplitude(&mut self, val: f64) {
+    pub fn set_amplitude(&mut self, val: f32) {
         self.amplitude = val.abs()
     }
 
     // Methods
-    pub fn as_vector2d(&self) -> Vector2D<f64> {
+    pub fn as_vector2d(&self) -> Vector2D<f32> {
         Vector2D::new(self.direction.x * self.amplitude, self.direction.y * self.amplitude)
     }
 }
@@ -182,22 +182,33 @@ impl std::ops::AddAssign for Force {
     }
 }
 
+impl std::ops::Neg for Force {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Force {
+            direction: self.direction.neg(),
+            amplitude: self.amplitude,
+        }
+    }
+}
+
 // ----------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PhysicsBody {
-    pos: Vector2D<f64>,
-    mass: f64,
-    radius: f64,
+    pos: Vector2D<f32>,
+    mass: f32,
+    radius: f32,
     momentum: Force,
     color: graphics::Color,
-    trail: Vec<Vector2D<f64>>,
+    trail: Vec<Vector2D<f32>>,
 }
 
 #[allow(dead_code)]
 impl PhysicsBody {
     // Constructor
-    pub fn new(pos: Vector2D<f64>, mass: f64, momentum: Force, color: graphics::Color) -> PhysicsBody {
+    pub fn new(pos: Vector2D<f32>, mass: f32, momentum: Force, color: graphics::Color) -> PhysicsBody {
         PhysicsBody {
             pos,
             mass,
@@ -210,28 +221,28 @@ impl PhysicsBody {
 
     pub fn new_rand() -> PhysicsBody {
         let mut rng = rand::thread_rng();
-        let mass = rng.gen::<f64>() * 50.0;
+        let mass = rng.gen::<f32>() * 50.0;
 
         PhysicsBody {
-            pos: Vector2D::new(rng.gen::<f64>() * 320.0, rng.gen::<f64>() * 180.0),
+            pos: Vector2D::new(rng.gen::<f32>() * 500.0, rng.gen::<f32>() * 500.0),
             mass,
             radius: mass / 5.0,
             momentum: Force::new_rand(),
             color: graphics::Color::new(
-                (10.0 + rng.gen::<f64>() * 245.0) as u8,
-                (10.0 + rng.gen::<f64>() * 245.0) as u8,
-                (10.0 + rng.gen::<f64>() * 245.0) as u8,
+                (10.0 + rng.gen::<f32>() * 245.0) as u8,
+                (10.0 + rng.gen::<f32>() * 245.0) as u8,
+                (10.0 + rng.gen::<f32>() * 245.0) as u8,
             ),
             trail: vec![],
         }
     }
 
     // Immutable access
-    pub fn pos(&self) -> &Vector2D<f64> {
+    pub fn pos(&self) -> &Vector2D<f32> {
         &self.pos
     }
 
-    pub fn mass(&self) -> &f64 {
+    pub fn mass(&self) -> &f32 {
         &self.mass
     }
 
@@ -243,16 +254,16 @@ impl PhysicsBody {
         &self.color
     }
 
-    pub fn trail(&self) -> &Vec<Vector2D<f64>> {
+    pub fn trail(&self) -> &Vec<Vector2D<f32>> {
         &self.trail
     }
 
     // Mutable access
-    pub fn pos_mut(&mut self) -> &mut Vector2D<f64> {
+    pub fn pos_mut(&mut self) -> &mut Vector2D<f32> {
         &mut self.pos
     }
 
-    pub fn mass_mut(&mut self) -> &mut f64 {
+    pub fn mass_mut(&mut self) -> &mut f32 {
         &mut self.mass
     }
 
@@ -279,24 +290,24 @@ impl PhysicsBody {
 
     pub fn shape(&self) -> Vec<Box<dyn graphics::Draw>> {
         let mut out: Vec<Box<dyn graphics::Draw>> = vec![
-            Box::new(graphics::Circle::new(self.pos, self.radius, self.color)),
+            Box::new(graphics::Circle::new(self.pos, self.radius, 1, self.color)),
             Box::new(graphics::Line::new(
                 self.pos,
                 Vector2D::new(
                     self.pos.x + (self.momentum.direction().x * self.momentum.amplitude() * 20.0),
                     self.pos.y + (self.momentum.direction().y * self.momentum.amplitude() * 20.0),
                 ),
+                2,
                 graphics::Color::new(255, 255, 255),
             )),
         ];
         for i in 1..self.trail.len() {
-            if i % 2 == 0 {
-                out.push(Box::new(graphics::Line::new(
-                    self.trail[i - 1],
-                    self.trail[i],
-                    self.color,
-                )))
-            }
+            out.push(Box::new(graphics::Line::new(
+                self.trail[i - 1],
+                self.trail[i],
+                0,
+                self.color,
+            )))
         }
         out
     }
@@ -305,7 +316,7 @@ impl PhysicsBody {
         self.distance_between(other) < (self.radius + other.radius)
     }
 
-    pub fn distance_between(&self, other: &Self) -> f64 {
+    pub fn distance_between(&self, other: &Self) -> f32 {
         ((other.pos.x - self.pos.x).powf(2.0) + (other.pos.y - self.pos.y).powf(2.0)).sqrt()
     }
 }

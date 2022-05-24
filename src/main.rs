@@ -8,7 +8,7 @@ use vector2d::Vector2D;
 
 const WIDTH: usize = 1920;
 const HEIGHT: usize = 1080;
-const NUM_OF_BODIES: usize = 100;
+const NUM_OF_BODIES: usize = 50;
 
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
@@ -29,17 +29,24 @@ fn main() {
 
     let mut scene = graphics::Scene::new(
         vec![],
-        Vector2D::new(WIDTH as u64, HEIGHT as u64),
+        Vector2D::new(WIDTH as u32, HEIGHT as u32),
         1.0,
         Some(Vector2D::new(0.1, 5.0)),
     );
-    let mut simulation = Simulation::new((0..NUM_OF_BODIES).into_iter().map(|_| PhysicsBody::new_rand()).collect(), None);
+    let mut simulation = Simulation::new(
+        (0..NUM_OF_BODIES)
+            .into_iter()
+            .map(|_| PhysicsBody::new_rand())
+            .collect(),
+        None,
+    );
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         keyboard_input(&mut scene, &mut simulation, &window);
         simulation.physics_tick();
 
         *scene.contents_mut() = simulation.shapes();
+        scene.sort_contents();
 
         window
             .update_with_buffer(&scene.to_frame_buffer().to_vec_u32(), WIDTH, HEIGHT)
@@ -71,6 +78,9 @@ fn keyboard_input(scene: &mut graphics::Scene, simulation: &mut Simulation, wind
     if window.is_key_down(Key::R) {
         *scene.offset_mut() = Vector2D::new(0.0, 0.0);
         scene.set_scale(1.0);
-        *simulation.bodies_mut() = (0..NUM_OF_BODIES).into_iter().map(|_| PhysicsBody::new_rand()).collect();
+        *simulation.bodies_mut() = (0..NUM_OF_BODIES)
+            .into_iter()
+            .map(|_| PhysicsBody::new_rand())
+            .collect();
     }
 }
