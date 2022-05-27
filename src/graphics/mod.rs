@@ -71,20 +71,20 @@ impl Scene {
         &mut self.contents
     }
 
-    pub fn offset_mut(&mut self) -> &mut Vector2D<f32> {
-        &mut self.offset
-    }
-
-    pub fn min_max_scale_mut(&mut self) -> &mut Option<Vector2D<f32>> {
-        &mut self.min_max_scale
-    }
-
     // Setters
     pub fn set_scale(&mut self, val: f32) {
         match self.min_max_scale {
             Some(x) => self.scale = val.clamp(x.x, x.y),
             None => self.scale = val,
         }
+    }
+
+    pub fn set_offset(&mut self, val: Vector2D<f32>){
+        self.offset = val
+    }
+
+    pub fn set_min_max_scale(&mut self, val: Option<Vector2D<f32>>) {
+        self.min_max_scale = val
     }
 
     // Methods
@@ -120,6 +120,17 @@ impl Scene {
         self.draw(&mut output);
 
         output
+    }
+
+    pub fn world_to_screen_coords(&self, pos: Vector2D<f32>) -> Vector2D<f32> {
+        unimplemented!()
+    }
+
+    pub fn screen_to_world_coords(&self, pos: Vector2D<f32>) -> Vector2D<f32> {
+        Vector2D::new(
+            ((pos.x) / (self.base_scale * self.scale)) - self.offset.x,
+            ((pos.y) / (self.base_scale * self.scale)) - self.offset.y,
+        )
     }
 }
 
@@ -207,9 +218,9 @@ impl FrameBuffer {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Color {
-    r: u8,
-    g: u8,
-    b: u8,
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
 }
 
 #[allow(dead_code)]
@@ -219,31 +230,31 @@ impl Color {
         Color { r, g, b }
     }
 
-    // Immutable access
-    pub fn r(&self) -> &u8 {
-        &self.r
-    }
+    // // Immutable access
+    // pub fn r(&self) -> &u8 {
+    //     &self.r
+    // }
 
-    pub fn g(&self) -> &u8 {
-        &self.g
-    }
+    // pub fn g(&self) -> &u8 {
+    //     &self.g
+    // }
 
-    pub fn b(&self) -> &u8 {
-        &self.b
-    }
+    // pub fn b(&self) -> &u8 {
+    //     &self.b
+    // }
 
-    // Mutable access
-    pub fn r_mut(&mut self) -> &mut u8 {
-        &mut self.r
-    }
+    // // Mutable access
+    // pub fn r_mut(&mut self) -> &mut u8 {
+    //     &mut self.r
+    // }
 
-    pub fn g_mut(&mut self) -> &mut u8 {
-        &mut self.g
-    }
+    // pub fn g_mut(&mut self) -> &mut u8 {
+    //     &mut self.g
+    // }
 
-    pub fn b_mut(&mut self) -> &mut u8 {
-        &mut self.b
-    }
+    // pub fn b_mut(&mut self) -> &mut u8 {
+    //     &mut self.b
+    // }
 
     // Methods
     pub fn to_u32(self) -> u32 {
@@ -287,16 +298,16 @@ impl Line {
     }
 
     // Mutable access
-    pub fn pos_1_mut(&mut self) -> &mut Vector2D<f32> {
-        &mut self.pos_1
+    pub fn set_pos_1(&mut self, val: Vector2D<f32>) {
+        self.pos_1 = val
     }
 
-    pub fn pos_2_mut(&mut self) -> &mut Vector2D<f32> {
-        &mut self.pos_2
+    pub fn set_pos_2(&mut self, val: Vector2D<f32>) {
+        self.pos_2 = val
     }
 
-    pub fn color_mut(&mut self) -> &mut Color {
-        &mut self.color
+    pub fn set_color(&mut self, val: Color) {
+        self.color = val
     }
 }
 
@@ -398,18 +409,17 @@ impl Rect {
         &self.color
     }
 
-    // Mutable access
-    pub fn pos_mut(&mut self) -> &mut Vector2D<f32> {
-        &mut self.pos
-    }
-
-    pub fn color_mut(&mut self) -> &mut Color {
-        &mut self.color
-    }
-
     // Setters
     pub fn set_size(&mut self, val: Vector2D<f32>) {
         self.size = Vector2D::new(val.x.abs(), val.y.abs())
+    }
+
+    pub fn set_pos(&mut self, val: Vector2D<f32>)  {
+        self.pos = val
+    }
+
+    pub fn set_color(&mut self, val: Color) {
+        self.color = val
     }
 }
 
@@ -511,18 +521,17 @@ impl Circle {
         &self.color
     }
 
-    // Mutable access
-    pub fn pos_mut(&mut self) -> &mut Vector2D<f32> {
-        &mut self.pos
-    }
-
-    pub fn color_mut(&mut self) -> &mut Color {
-        &mut self.color
-    }
-
     // Setters
     pub fn set_radius(&mut self, val: f32) {
         self.radius = val.abs()
+    }
+
+    pub fn set_pos(&mut self, val: Vector2D<f32>) {
+        self.pos = val
+    }
+
+    pub fn color_mut(&mut self, val: Color) {
+        self.color = val
     }
 }
 

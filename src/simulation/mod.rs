@@ -3,22 +3,24 @@ use itertools::Itertools;
 use rand::prelude::*;
 use vector2d::Vector2D;
 
-const DEFAULT_GRAV_CONSTANT: f32 = 0.01;
+const DEFAULT_GRAV_CONST: f32 = 0.005;
+const MAX_FORCE_AMPLITUDE: Option<f32> = Some(10.0);
+const MAX_TRAIL_LENGTH: usize = 1000;
 
 // ----------------------------------------------------------------
 
 pub struct Simulation {
     bodies: Vec<PhysicsBody>,
-    grav_constant: f32,
+    grav_const: f32,
 }
 
 #[allow(dead_code)]
 impl Simulation {
     // Constructor
-    pub fn new(bodies: Vec<PhysicsBody>, grav_constant: Option<f32>) -> Simulation {
+    pub fn new(bodies: Vec<PhysicsBody>, grav_const: Option<f32>) -> Simulation {
         Simulation {
             bodies,
-            grav_constant: grav_constant.unwrap_or(DEFAULT_GRAV_CONSTANT),
+            grav_const: grav_const.unwrap_or(DEFAULT_GRAV_CONST),
         }
     }
 
@@ -27,8 +29,8 @@ impl Simulation {
         &self.bodies
     }
 
-    pub fn grav_constant(&self) -> &f32 {
-        &self.grav_constant
+    pub fn grav_const(&self) -> &f32 {
+        &self.grav_const
     }
 
     // Mutable access
@@ -36,8 +38,9 @@ impl Simulation {
         &mut self.bodies
     }
 
-    pub fn grav_constant_mut(&mut self) -> &mut f32 {
-        &mut self.grav_constant
+    // Setters
+    pub fn set_grav_const(&mut self, val: f32) {
+        self.grav_const = val
     }
 
     // Methods
@@ -53,7 +56,7 @@ impl Simulation {
         let dist_between = body1.distance_between(body2);
         Force::new(
             Vector2D::new(body1.pos().x - body2.pos().x, body1.pos().y - body2.pos().y).normalise(),
-            (self.grav_constant * body1.mass() * body2.mass())
+            (self.grav_const * body1.mass() * body2.mass())
                 / ((if dist_between > 1.0 { dist_between } else { 1.0 }).powf(2.0)),
         )
     }
@@ -76,7 +79,8 @@ impl Simulation {
 
         (0..self.bodies.len()).permutations(2).into_iter().for_each(|x| {
             let grav_force_temp = -self.gravity_between(&bodies[x[0]], &bodies[x[1]]);
-            *self.bodies[x[0]].momentum_mut() += grav_force_temp;
+            let self_momentum_temp = self.bodies[x[0]].momentum;
+            self.bodies[x[0]].set_momentum(self_momentum_temp + grav_force_temp);
         })
     }
 
@@ -111,7 +115,7 @@ impl Force {
     pub fn new(direction: Vector2D<f32>, amplitude: f32) -> Force {
         Force {
             direction: direction.normalise(),
-            amplitude: amplitude.abs(),
+            amplitude: amplitude.abs().clamp(0.0, MAX_FORCE_AMPLITUDE.unwrap_or(f32::MAX)),
         }
     }
 
@@ -127,16 +131,7 @@ impl Force {
             amplitude: rng.gen::<f32>().abs(),
         }
     }
-    // pub fn new_rand() -> Force {
-    //     Force {
-    //         direction: Vector2D::new(
-    //             0.0,
-    //             0.0,
-    //         ),
-    //         amplitude: 0.0,
-    //     }
-    // }
-
+    
     // Immutable access
     pub fn direction(&self) -> &Vector2D<f32> {
         &self.direction
@@ -152,7 +147,7 @@ impl Force {
     }
 
     pub fn set_amplitude(&mut self, val: f32) {
-        self.amplitude = val.abs()
+        self.amplitude = val.abs().clamp(0.0, MAX_FORCE_AMPLITUDE.unwrap_or(f32::MAX))
     }
 
     // Methods
@@ -215,7 +210,7 @@ impl PhysicsBody {
             radius: mass / 5.0,
             momentum,
             color,
-            trail: vec![],
+            trail: Vec::with_capacity(MAX_TRAIL_LENGTH),
         }
     }
 
@@ -233,7 +228,7 @@ impl PhysicsBody {
                 (10.0 + rng.gen::<f32>() * 245.0) as u8,
                 (10.0 + rng.gen::<f32>() * 245.0) as u8,
             ),
-            trail: vec![],
+            trail: Vec::with_capacity(MAX_TRAIL_LENGTH),
         }
     }
 
@@ -258,22 +253,34 @@ impl PhysicsBody {
         &self.trail
     }
 
-    // Mutable access
-    pub fn pos_mut(&mut self) -> &mut Vector2D<f32> {
-        &mut self.pos
+    // Setters
+    pub fn set_pos(&mut self, val: Vector2D<f32>) {
+        self.pos = val
     }
+    pub fn set_mass(&mut self, val: f32) {
+        self.mass = val
+    }
+    pub fn set_momentum(&mut self, val: Force) {
+        self.momentum = val
+    }
+    pub fn set_color(&mut self, val: graphics::Color) {
+        self.color = val
+    }
+    // pub fn pos_mut(&mut self) -> &mut Vector2D<f32> {
+    //     &mut self.pos
+    // }
 
-    pub fn mass_mut(&mut self) -> &mut f32 {
-        &mut self.mass
-    }
+    // pub fn mass_mut(&mut self) -> &mut f32 {
+    //     &mut self.mass
+    // }
 
-    pub fn momentum_mut(&mut self) -> &mut Force {
-        &mut self.momentum
-    }
+    // pub fn momentum_mut(&mut self) -> &mut Force {
+    //     &mut self.momentum
+    // }
 
-    pub fn color_mut(&mut self) -> &mut graphics::Color {
-        &mut self.color
-    }
+    // pub fn color_mut(&mut self) -> &mut graphics::Color {
+    //     &mut self.color
+    // }
 
     // Methods
     pub fn move_self(&mut self) {
@@ -283,7 +290,7 @@ impl PhysicsBody {
     pub fn add_trail(&mut self) {
         self.trail.push(self.pos);
 
-        if self.trail.len() > 1000 {
+        if self.trail.len() > MAX_TRAIL_LENGTH {
             self.trail.remove(0);
         }
     }
@@ -301,13 +308,23 @@ impl PhysicsBody {
                 graphics::Color::new(255, 255, 255),
             )),
         ];
-        for i in 1..self.trail.len() {
-            out.push(Box::new(graphics::Line::new(
-                self.trail[i - 1],
-                self.trail[i],
-                0,
-                self.color,
-            )))
+        // for i in 1..self.trail.len() {
+        //     out.push(Box::new(graphics::Line::new(
+        //         self.trail[i - 1],
+        //         self.trail[i],
+        //         0,
+        //         self.color,
+        //     )))
+        // }
+        for i in 2..self.trail.len() {
+            if i % 2 == 0 {
+                out.push(Box::new(graphics::Line::new(
+                    self.trail[i - 1],
+                    self.trail[i],
+                    0,
+                    self.color,
+                )))
+            }
         }
         out
     }
