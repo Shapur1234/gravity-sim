@@ -58,10 +58,6 @@ impl Scene {
         &self.offset
     }
 
-    pub fn scale(&self) -> &f32 {
-        &self.scale
-    }
-
     pub fn min_max_scale(&self) -> &Option<Vector2D<f32>> {
         &self.min_max_scale
     }
@@ -72,6 +68,10 @@ impl Scene {
     }
 
     // Setters
+    pub fn get_scale(&self) -> f32 {
+        self.base_scale * self.scale
+    }
+
     pub fn set_scale(&mut self, val: f32) {
         match self.min_max_scale {
             Some(x) => self.scale = val.clamp(x.x, x.y),
@@ -79,7 +79,7 @@ impl Scene {
         }
     }
 
-    pub fn set_offset(&mut self, val: Vector2D<f32>){
+    pub fn set_offset(&mut self, val: Vector2D<f32>) {
         self.offset = val
     }
 
@@ -95,8 +95,8 @@ impl Scene {
             let res = Vector2D::new(self.res.x as f32, self.res.y as f32);
             if self.scale - scale_old != 0.0 {
                 self.offset -= Vector2D::new(
-                    ((res.x / (self.base_scale * scale_old)) - (res.x / (self.base_scale * self.scale))) / 2.0,
-                    ((res.y / (self.base_scale * scale_old)) - (res.y / (self.base_scale * self.scale))) / 2.0,
+                    ((res.x / (self.base_scale * scale_old)) - (res.x / (self.get_scale()))) / 2.0,
+                    ((res.y / (self.base_scale * scale_old)) - (res.y / (self.get_scale()))) / 2.0,
                 );
             }
         }
@@ -110,7 +110,7 @@ impl Scene {
         self.contents.iter().for_each(|shape| {
             shape
                 .offset(self.offset)
-                .scale(self.base_scale * self.scale)
+                .scale(self.get_scale())
                 .draw(frame_buffer)
         });
     }
@@ -123,13 +123,17 @@ impl Scene {
     }
 
     pub fn world_to_screen_coords(&self, pos: Vector2D<f32>) -> Vector2D<f32> {
-        unimplemented!()
+        unimplemented!();
+        // Vector2D::new(
+        //     ((pos.x) * (self.get_scale())) - self.offset.x,
+        //     ((pos.y) * (self.get_scale())) - self.offset.y,
+        // )
     }
 
     pub fn screen_to_world_coords(&self, pos: Vector2D<f32>) -> Vector2D<f32> {
         Vector2D::new(
-            ((pos.x) / (self.base_scale * self.scale)) - self.offset.x,
-            ((pos.y) / (self.base_scale * self.scale)) - self.offset.y,
+            ((pos.x) / (self.get_scale())) - self.offset.x,
+            ((pos.y) / (self.get_scale())) - self.offset.y,
         )
     }
 }
@@ -414,7 +418,7 @@ impl Rect {
         self.size = Vector2D::new(val.x.abs(), val.y.abs())
     }
 
-    pub fn set_pos(&mut self, val: Vector2D<f32>)  {
+    pub fn set_pos(&mut self, val: Vector2D<f32>) {
         self.pos = val
     }
 

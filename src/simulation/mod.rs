@@ -1,11 +1,13 @@
 use super::graphics;
+
 use itertools::Itertools;
 use rand::prelude::*;
+use std::fmt;
 use vector2d::Vector2D;
 
 const DEFAULT_GRAV_CONST: f32 = 0.005;
 const MAX_FORCE_AMPLITUDE: Option<f32> = Some(10.0);
-const MAX_TRAIL_LENGTH: usize = 1000;
+const MAX_TRAIL_LENGTH: Option<usize> = Some(1000);
 
 // ----------------------------------------------------------------
 
@@ -25,9 +27,9 @@ impl Simulation {
     }
 
     // Immutable access
-    pub fn bodies(&self) -> &Vec<PhysicsBody> {
-        &self.bodies
-    }
+    // pub fn bodies(&self) -> &Vec<PhysicsBody> {
+    //     &self.bodies
+    // }
 
     pub fn grav_const(&self) -> &f32 {
         &self.grav_const
@@ -52,6 +54,18 @@ impl Simulation {
         out
     }
 
+    pub fn get_body(&self, i: usize) -> Option<&PhysicsBody> {
+        if i < self.bodies.len() {
+            Some(&self.bodies[i])
+        } else {
+            None
+        }
+    }
+
+    pub fn add_body(&mut self, physics_body: PhysicsBody) {
+        self.bodies.push(physics_body);
+    }
+
     pub fn gravity_between(&self, body1: &PhysicsBody, body2: &PhysicsBody) -> Force {
         let dist_between = body1.distance_between(body2);
         Force::new(
@@ -60,6 +74,21 @@ impl Simulation {
                 / ((if dist_between > 1.0 { dist_between } else { 1.0 }).powf(2.0)),
         )
     }
+
+    pub fn get_bodies_on_point(&self, p: Vector2D<f32>) -> Vec<&PhysicsBody> {
+        self.bodies
+            .iter()
+            .filter(|x| ((x.pos.x - p.x).powf(2.0) + (x.pos.y - p.y).powf(2.0)) < x.radius.powf(2.0))
+            .collect()
+    }
+
+    pub fn get_body_on_point_index(&self, p: Vector2D<f32>) -> Option<usize> {
+        self.bodies
+            .iter()
+            .position(|x| ((x.pos.x - p.x).powf(2.0) + (x.pos.y - p.y).powf(2.0)) < x.radius.powf(2.0))
+    }
+
+    // Physics
 
     pub fn physics_tick(&mut self) {
         self.gravity_tick();
@@ -131,7 +160,7 @@ impl Force {
             amplitude: rng.gen::<f32>().abs(),
         }
     }
-    
+
     // Immutable access
     pub fn direction(&self) -> &Vector2D<f32> {
         &self.direction
@@ -210,7 +239,7 @@ impl PhysicsBody {
             radius: mass / 5.0,
             momentum,
             color,
-            trail: Vec::with_capacity(MAX_TRAIL_LENGTH),
+            trail: Vec::with_capacity(MAX_TRAIL_LENGTH.unwrap_or(255)),
         }
     }
 
@@ -228,7 +257,7 @@ impl PhysicsBody {
                 (10.0 + rng.gen::<f32>() * 245.0) as u8,
                 (10.0 + rng.gen::<f32>() * 245.0) as u8,
             ),
-            trail: Vec::with_capacity(MAX_TRAIL_LENGTH),
+            trail: Vec::with_capacity(MAX_TRAIL_LENGTH.unwrap_or(255)),
         }
     }
 
@@ -290,8 +319,13 @@ impl PhysicsBody {
     pub fn add_trail(&mut self) {
         self.trail.push(self.pos);
 
-        if self.trail.len() > MAX_TRAIL_LENGTH {
-            self.trail.remove(0);
+        match MAX_TRAIL_LENGTH {
+            Some(v) => {
+                if self.trail.len() > v {
+                    self.trail.remove(0);
+                }
+            }
+            None => {}
         }
     }
 
@@ -308,24 +342,24 @@ impl PhysicsBody {
                 graphics::Color::new(255, 255, 255),
             )),
         ];
-        // for i in 1..self.trail.len() {
-        //     out.push(Box::new(graphics::Line::new(
-        //         self.trail[i - 1],
-        //         self.trail[i],
-        //         0,
-        //         self.color,
-        //     )))
-        // }
-        for i in 2..self.trail.len() {
-            if i % 2 == 0 {
-                out.push(Box::new(graphics::Line::new(
-                    self.trail[i - 1],
-                    self.trail[i],
-                    0,
-                    self.color,
-                )))
-            }
+        for i in 1..self.trail.len() {
+            out.push(Box::new(graphics::Line::new(
+                self.trail[i - 1],
+                self.trail[i],
+                0,
+                self.color,
+            )))
         }
+        // for i in 2..self.trail.len() {
+        //     if i % 2 == 0 {
+        //         out.push(Box::new(graphics::Line::new(
+        //             self.trail[i - 1],
+        //             self.trail[i],
+        //             0,
+        //             self.color,
+        //         )))
+        //     }
+        // }
         out
     }
 
@@ -335,5 +369,15 @@ impl PhysicsBody {
 
     pub fn distance_between(&self, other: &Self) -> f32 {
         ((other.pos.x - self.pos.x).powf(2.0) + (other.pos.y - self.pos.y).powf(2.0)).sqrt()
+    }
+}
+
+impl fmt::Display for PhysicsBody {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "(Pos: {:?}, Mass: {:?}, Radius: {:?}, Momentum: {:?})",
+            self.pos, self.mass, self.radius, self.momentum
+        )
     }
 }
