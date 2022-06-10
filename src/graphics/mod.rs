@@ -1,4 +1,5 @@
 use std::fmt;
+use termion::color;
 use vector2d::Vector2D;
 
 // ----------------------------------------------------------------
@@ -39,8 +40,10 @@ impl Scene {
             contents,
             res,
             offset: Vector2D::new(0.0, 0.0),
+            // scale: 1.0,
             scale,
             min_max_scale,
+            // base_scale: 1.0,
             base_scale: (res.x as f32) / 500.0,
         }
     }
@@ -102,17 +105,18 @@ impl Scene {
         }
     }
 
+    pub fn focus_on(&mut self, p: Vector2D<f32>) {
+        self.offset = (Vector2D::new(self.res.x as f32, self.res.y as f32) / self.get_scale() / 2.0) - p
+    }
+
     pub fn sort_contents(&mut self) {
         self.contents.sort_by_key(|x| x.z_index())
     }
 
     pub fn draw(&self, frame_buffer: &mut FrameBuffer) {
-        self.contents.iter().for_each(|shape| {
-            shape
-                .offset(self.offset)
-                .scale(self.get_scale())
-                .draw(frame_buffer)
-        });
+        self.contents
+            .iter()
+            .for_each(|shape| shape.offset(self.offset).scale(self.get_scale()).draw(frame_buffer));
     }
 
     pub fn to_frame_buffer(&self) -> FrameBuffer {
@@ -124,17 +128,10 @@ impl Scene {
 
     pub fn world_to_screen_coords(&self, pos: Vector2D<f32>) -> Vector2D<f32> {
         unimplemented!();
-        // Vector2D::new(
-        //     ((pos.x) * (self.get_scale())) - self.offset.x,
-        //     ((pos.y) * (self.get_scale())) - self.offset.y,
-        // )
     }
 
     pub fn screen_to_world_coords(&self, pos: Vector2D<f32>) -> Vector2D<f32> {
-        Vector2D::new(
-            ((pos.x) / (self.get_scale())) - self.offset.x,
-            ((pos.y) / (self.get_scale())) - self.offset.y,
-        )
+        (pos / self.get_scale()) - self.offset
     }
 }
 
@@ -176,14 +173,14 @@ impl FrameBuffer {
     }
 
     // Methods
-    pub fn contains_point(&self, point: Vector2D<f32>) -> bool {
-        point.x >= 0.0 && point.x < (self.size.x as f32) && point.y >= 0.0 && point.y < (self.size.y as f32)
+    pub fn contains_point(&self, p: Vector2D<f32>) -> bool {
+        p.x >= 0.0 && p.x < (self.size.x as f32) && p.y >= 0.0 && p.y < (self.size.y as f32)
     }
 
-    pub fn set_pixel(&mut self, point: Vector2D<f32>, color: Color) {
-        if self.contains_point(point) {
+    pub fn set_pixel(&mut self, p: Vector2D<f32>, color: Color) {
+        if self.contains_point(p) {
             let width = self.size.x as u32; // Dunno why I have to do that
-            self.buffer[(((point.y as u32) * width) + (point.x as u32)) as usize] = color;
+            self.buffer[(((p.y as u32) * width) + (p.x as u32)) as usize] = color;
         }
     }
 
@@ -263,6 +260,10 @@ impl Color {
     // Methods
     pub fn to_u32(self) -> u32 {
         ((self.r as u32) << 16) | ((self.g as u32) << 8) | (self.b as u32)
+    }
+
+    pub fn bg_string(self) -> String {
+        color::Rgb(self.r, self.g, self.b).fg_string()
     }
 }
 

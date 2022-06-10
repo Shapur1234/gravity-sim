@@ -41,25 +41,25 @@ fn main() {
             .map(|_| PhysicsBody::new_rand())
             .collect(),
         None,
+        None,
     );
 
     let mut focused_body: Option<usize> = None;
     while window.is_open() && !window.is_key_down(Key::Escape) {
         move_scene(&mut scene, &window);
         keyboard_input(&mut scene, &mut simulation, &mut physics_on, &mut focused_body, &window);
-
-        match focused_body {
-            Some(v) => match simulation.get_body(v) {
-                Some(v) => scene.set_offset(scene.world_to_screen_coords(Vector2D::new(v.pos().x, v.pos().y))),
-                None => {}
-            },
-            None => {}
-        }
-
         if physics_on {
             simulation.physics_tick();
         }
 
+        match focused_body {
+            Some(v) => match simulation.get_body(v) {
+                Some(v) => scene.focus_on(*v.pos()),
+
+                None => {}
+            },
+            None => {}
+        }
         *scene.contents_mut() = simulation.shapes();
         scene.sort_contents();
 
@@ -119,7 +119,7 @@ fn keyboard_input(
         *physics_on = !*physics_on;
     }
 
-    if window.is_key_pressed(Key::Q, KeyRepeat::No) {
+    if window.is_key_pressed(Key::Q, KeyRepeat::Yes) {
         match window.get_mouse_pos(minifb::MouseMode::Discard) {
             Some(v) => {
                 let mut new_physics_body = PhysicsBody::new_rand();
@@ -131,15 +131,26 @@ fn keyboard_input(
         }
     }
 
+    if window.is_key_pressed(Key::E, KeyRepeat::Yes) {
+        match window.get_mouse_pos(minifb::MouseMode::Discard) {
+            Some(v) => {
+                let found = simulation.get_body_on_point_index(scene.screen_to_world_coords(Vector2D::new(v.0, v.1)));
+                found.into_iter().for_each(|x| simulation.remove_body(x));
+
+                *focused_body = None;
+            }
+            None => {}
+        }
+    }
+
     if window.is_key_pressed(Key::B, KeyRepeat::No) {
         match window.get_mouse_pos(minifb::MouseMode::Discard) {
             Some(v) => {
                 let found = simulation.get_bodies_on_point(scene.screen_to_world_coords(Vector2D::new(v.0, v.1)));
 
                 if found.len() > 0 {
-                    println!("Bodies under point:");
-                    found.into_iter().for_each(|x| println!("{x}"));
                     println!();
+                    found.into_iter().for_each(|x| println!("{x}"));
                 }
             }
             None => {}
@@ -158,9 +169,22 @@ fn keyboard_input(
         }
     }
 
+    if window.is_key_pressed(Key::NumPadPlus, KeyRepeat::Yes) {
+        simulation.set_physics_speed(*simulation.physics_speed() + 1)
+    }
+
+    if window.is_key_pressed(Key::NumPadMinus, KeyRepeat::Yes) {
+        simulation.set_physics_speed(if *simulation.physics_speed() > 0 {
+            *simulation.physics_speed() - 1
+        } else {
+            1
+        })
+    }
+
     if window.is_key_pressed(Key::R, KeyRepeat::No) {
         scene.set_offset(Vector2D::new(0.0, 0.0));
         scene.set_scale(1.0);
+        *focused_body = None;
         *simulation.bodies_mut() = (0..NUM_OF_BODIES)
             .into_iter()
             .map(|_| PhysicsBody::new_rand())

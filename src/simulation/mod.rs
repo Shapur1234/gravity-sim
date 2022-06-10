@@ -3,6 +3,7 @@ use super::graphics;
 use itertools::Itertools;
 use rand::prelude::*;
 use std::fmt;
+use termion::color;
 use vector2d::Vector2D;
 
 const DEFAULT_GRAV_CONST: f32 = 0.005;
@@ -14,15 +15,17 @@ const MAX_TRAIL_LENGTH: Option<usize> = Some(1000);
 pub struct Simulation {
     bodies: Vec<PhysicsBody>,
     grav_const: f32,
+    physics_speed: u32,
 }
 
 #[allow(dead_code)]
 impl Simulation {
     // Constructor
-    pub fn new(bodies: Vec<PhysicsBody>, grav_const: Option<f32>) -> Simulation {
+    pub fn new(bodies: Vec<PhysicsBody>, grav_const: Option<f32>, physics_speed: Option<u32>) -> Simulation {
         Simulation {
             bodies,
             grav_const: grav_const.unwrap_or(DEFAULT_GRAV_CONST),
+            physics_speed: physics_speed.unwrap_or(1),
         }
     }
 
@@ -35,6 +38,10 @@ impl Simulation {
         &self.grav_const
     }
 
+    pub fn physics_speed(&self) -> &u32 {
+        &self.physics_speed
+    }
+
     // Mutable access
     pub fn bodies_mut(&mut self) -> &mut Vec<PhysicsBody> {
         &mut self.bodies
@@ -43,6 +50,10 @@ impl Simulation {
     // Setters
     pub fn set_grav_const(&mut self, val: f32) {
         self.grav_const = val
+    }
+
+    pub fn set_physics_speed(&mut self, val: u32) {
+        self.physics_speed = val.clamp(1, 16)
     }
 
     // Methods
@@ -59,6 +70,12 @@ impl Simulation {
             Some(&self.bodies[i])
         } else {
             None
+        }
+    }
+
+    pub fn remove_body(&mut self, i: usize) {
+        if i < self.bodies.len() {
+            self.bodies.remove(i);
         }
     }
 
@@ -91,9 +108,11 @@ impl Simulation {
     // Physics
 
     pub fn physics_tick(&mut self) {
-        self.gravity_tick();
-        self.movement_tick();
+        for _ in 0..self.physics_speed {
+            self.gravity_tick();
+            self.movement_tick();
         // self.collision_tick();
+    }
     }
 
     pub fn movement_tick(&mut self) {
@@ -376,8 +395,13 @@ impl fmt::Display for PhysicsBody {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "(Pos: {:?}, Mass: {:?}, Radius: {:?}, Momentum: {:?})",
-            self.pos, self.mass, self.radius, self.momentum
+            "{}Pos: {:?}, Mass: {:?}, Radius: {:?}, Momentum: {:?}{}",
+            self.color.bg_string(),
+            self.pos,
+            self.mass,
+            self.radius,
+            self.momentum,
+            color::Fg(color::Reset)
         )
     }
 }
