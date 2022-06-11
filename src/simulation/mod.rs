@@ -29,11 +29,6 @@ impl Simulation {
         }
     }
 
-    // Immutable access
-    // pub fn bodies(&self) -> &Vec<PhysicsBody> {
-    //     &self.bodies
-    // }
-
     pub fn grav_const(&self) -> &f32 {
         &self.grav_const
     }
@@ -111,8 +106,8 @@ impl Simulation {
         for _ in 0..self.physics_speed {
             self.gravity_tick();
             self.movement_tick();
-        // self.collision_tick();
-    }
+            self.collision_tick();
+        }
     }
 
     pub fn movement_tick(&mut self) {
