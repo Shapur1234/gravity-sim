@@ -10,6 +10,13 @@ const WIDTH: usize = 1260;
 const HEIGHT: usize = 720;
 const NUM_OF_BODIES: usize = 10;
 
+// TODO:
+// Console mode
+// Remove color library dependency
+// Wasm version
+// Cursor insert mode
+// Move input into struct
+
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
 
@@ -42,10 +49,10 @@ fn main() {
             .collect(),
         None,
         None,
+        CollisionMode::None,
     );
 
-    let mut focused_body: Option<&PhysicsBody> = None;
-    // let mut focused_body: Option<usize> = None;
+    let mut focused_body: Option<usize> = None;
     while window.is_open() && !window.is_key_down(Key::Escape) {
         move_scene(&mut scene, &window);
         keyboard_input(&mut scene, &mut simulation, &mut physics_on, &mut focused_body, &window);
@@ -54,7 +61,10 @@ fn main() {
         }
 
         match focused_body {
-            Some(v) => scene.focus_on(*v.pos()),
+            Some(v) => match simulation.get_body(v) {
+                Some(v) => scene.focus_on(*v.pos()),
+                None => {}
+            },
             None => {}
         }
         *scene.contents_mut() = simulation.shapes();
@@ -109,7 +119,7 @@ fn keyboard_input(
     scene: &mut graphics::Scene,
     simulation: &mut Simulation,
     physics_on: &mut bool,
-    focused_body: &mut Option<&PhysicsBody>,
+    focused_body: &mut Option<usize>,
     window: &Window,
 ) {
     if window.is_key_pressed(Key::Space, KeyRepeat::No) {
@@ -131,10 +141,13 @@ fn keyboard_input(
     if window.is_key_pressed(Key::E, KeyRepeat::Yes) {
         match window.get_mouse_pos(minifb::MouseMode::Discard) {
             Some(v) => {
-                let found = simulation.get_body_on_point_index(scene.screen_to_world_coords(Vector2D::new(v.0, v.1)));
-                found.into_iter().for_each(|x| simulation.remove_body(x));
-
-                *focused_body = None;
+                match simulation.get_body_on_point_index(scene.screen_to_world_coords(Vector2D::new(v.0, v.1))) {
+                    Some(v) => {
+                        simulation.remove_body(v);
+                        *focused_body = None;
+                    }
+                    None => {}
+                }
             }
             None => {}
         }
@@ -145,7 +158,7 @@ fn keyboard_input(
             Some(v) => {
                 let found = simulation.get_bodies_on_point(scene.screen_to_world_coords(Vector2D::new(v.0, v.1)));
 
-                if found.len() > 0 {
+                if !found.is_empty() {
                     println!();
                     found.into_iter().for_each(|x| println!("{x}"));
                 }
@@ -157,8 +170,8 @@ fn keyboard_input(
     if window.is_key_pressed(Key::V, KeyRepeat::No) {
         match window.get_mouse_pos(minifb::MouseMode::Discard) {
             Some(v) => {
-                let body_vec = simulation.get_bodies_on_point(scene.screen_to_world_coords(Vector2D::new(v.0, v.1)));
-                *focused_body = if body_vec.len() > 0 { Some(body_vec[0]) } else { None }
+                *focused_body =
+                    simulation.get_body_on_point_index(scene.screen_to_world_coords(Vector2D::new(v.0, v.1)))
             }
             None => {}
         }

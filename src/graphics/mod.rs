@@ -1,5 +1,4 @@
 use std::fmt;
-use termion::color;
 use vector2d::Vector2D;
 
 // ----------------------------------------------------------------
@@ -263,7 +262,11 @@ impl Color {
     }
 
     pub fn bg_string(self) -> String {
-        color::Rgb(self.r, self.g, self.b).fg_string()
+        format!("\x1b[38;2;{:?};{:?};{:?}m", self.r, self.g, self.b)
+    }
+
+    pub fn default_color() -> String {
+        "\x1b[0m".to_string()
     }
 }
 

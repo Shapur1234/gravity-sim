@@ -3,7 +3,6 @@ use super::graphics;
 use itertools::Itertools;
 use rand::prelude::*;
 use std::fmt;
-use termion::color;
 use vector2d::Vector2D;
 
 const DEFAULT_GRAV_CONST: f32 = 0.005;
@@ -12,20 +11,37 @@ const MAX_TRAIL_LENGTH: Option<usize> = Some(1000);
 
 // ----------------------------------------------------------------
 
+#[derive(Debug)]
+pub enum CollisionMode {
+    None,
+    Collide,
+    Absorb,
+    Delete,
+}
+
+// ----------------------------------------------------------------
+
 pub struct Simulation {
     bodies: Vec<PhysicsBody>,
     grav_const: f32,
     physics_speed: u32,
+    collision_mode: CollisionMode,
 }
 
 #[allow(dead_code)]
 impl Simulation {
     // Constructor
-    pub fn new(bodies: Vec<PhysicsBody>, grav_const: Option<f32>, physics_speed: Option<u32>) -> Simulation {
+    pub fn new(
+        bodies: Vec<PhysicsBody>,
+        grav_const: Option<f32>,
+        physics_speed: Option<u32>,
+        collision_mode: CollisionMode,
+    ) -> Simulation {
         Simulation {
             bodies,
             grav_const: grav_const.unwrap_or(DEFAULT_GRAV_CONST),
             physics_speed: physics_speed.unwrap_or(1),
+            collision_mode,
         }
     }
 
@@ -129,18 +145,24 @@ impl Simulation {
 
     pub fn collision_tick(&mut self) {
         let bodies = self.bodies.to_vec();
-
-        let mut to_del: Vec<usize> = vec![];
-        (0..self.bodies.len()).combinations(2).into_iter().for_each(|x| {
-            if bodies[x[0]].intersects(&bodies[x[1]]) {
-                to_del.push(x[0]);
-                to_del.push(x[1]);
+        match self.collision_mode {
+            CollisionMode::None => {}
+            CollisionMode::Collide => unimplemented!(),
+            CollisionMode::Absorb => unimplemented!(),
+            CollisionMode::Delete => {
+                let mut to_del: Vec<usize> = vec![];
+                (0..self.bodies.len()).combinations(2).into_iter().for_each(|x| {
+                    if bodies[x[0]].intersects(&bodies[x[1]]) {
+                        to_del.push(x[0]);
+                        to_del.push(x[1]);
+                    }
+                });
+                to_del.dedup();
+                to_del.into_iter().rev().for_each(|x| {
+                    self.bodies.remove(x);
+                });
             }
-        });
-        to_del.dedup();
-        to_del.into_iter().rev().for_each(|x| {
-            self.bodies.remove(x);
-        });
+        }
     }
 }
 
@@ -396,7 +418,7 @@ impl fmt::Display for PhysicsBody {
             self.mass,
             self.radius,
             self.momentum,
-            color::Fg(color::Reset)
+            graphics::Color::default_color(),
         )
     }
 }

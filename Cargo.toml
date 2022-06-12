@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 minifb = "0.23.0"
+itertools = "0.10.3"
 vector2d = "2.2.0"
 rand = "0.8.5"
-itertools = "0.10.3"
-termion = "1.5.6"
