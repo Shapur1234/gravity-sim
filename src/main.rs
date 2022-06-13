@@ -12,7 +12,6 @@ const NUM_OF_BODIES: usize = 10;
 
 // TODO:
 // Console mode
-// Remove color library dependency
 // Wasm version
 // Cursor insert mode
 // Move input into struct
@@ -54,7 +53,24 @@ fn main() {
 
     let mut focused_body: Option<usize> = None;
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        move_scene(&mut scene, &window);
+        scene.handle_user_input(graphics::SceneUserInput {
+            move_up: window.is_key_down(Key::Up) || window.is_key_down(Key::W),
+            move_down: window.is_key_down(Key::Down) || window.is_key_down(Key::S),
+            move_right: window.is_key_down(Key::Right) || window.is_key_down(Key::D),
+            move_left: window.is_key_down(Key::Left) || window.is_key_down(Key::A),
+            zoom_in: window.is_key_down(Key::M),
+            zoom_out: window.is_key_down(Key::N),
+            mouse_pos: if let Some(v) = window.get_mouse_pos(minifb::MouseMode::Discard) {
+                Some(Vector2D::new(v.0, v.1))
+            } else {
+                None
+            },
+            mouse_scroll_wheel: if let Some(v) = window.get_scroll_wheel() {
+                Some(v.1)
+            } else {
+                None
+            },
+        });
         keyboard_input(&mut scene, &mut simulation, &mut physics_on, &mut focused_body, &window);
         if physics_on {
             simulation.physics_tick();
@@ -75,46 +91,6 @@ fn main() {
             .unwrap();
     }
 }
-
-fn move_scene(scene: &mut graphics::Scene, window: &Window) {
-    if window.is_key_down(Key::Up) || window.is_key_down(Key::W) {
-        scene.set_offset(Vector2D::new(
-            scene.offset().x,
-            scene.offset().y + (5.0 / scene.get_scale()),
-        ));
-    }
-    if window.is_key_down(Key::Down) || window.is_key_down(Key::S) {
-        scene.set_offset(Vector2D::new(
-            scene.offset().x,
-            scene.offset().y - (5.0 / scene.get_scale()),
-        ));
-    }
-    if window.is_key_down(Key::Left) || window.is_key_down(Key::A) {
-        scene.set_offset(Vector2D::new(
-            scene.offset().x + (5.0 / scene.get_scale()),
-            scene.offset().y,
-        ));
-    }
-    if window.is_key_down(Key::Right) || window.is_key_down(Key::D) {
-        scene.set_offset(Vector2D::new(
-            scene.offset().x - (5.0 / scene.get_scale()),
-            scene.offset().y,
-        ));
-    }
-
-    if window.is_key_down(Key::M) {
-        scene.change_scale(0.05)
-    }
-    if window.is_key_down(Key::N) {
-        scene.change_scale(-0.05)
-    }
-
-    match window.get_scroll_wheel() {
-        Some(v) => scene.change_scale(v.1 / 50.0),
-        None => {}
-    }
-}
-
 fn keyboard_input(
     scene: &mut graphics::Scene,
     simulation: &mut Simulation,

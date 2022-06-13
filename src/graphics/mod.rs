@@ -1,3 +1,4 @@
+use std::default;
 use std::fmt;
 use vector2d::Vector2D;
 
@@ -16,7 +17,20 @@ pub trait Draw {
 
 // ----------------------------------------------------------------
 
-#[derive()]
+#[derive(Debug, Default)]
+pub struct SceneUserInput {
+    pub move_up: bool,
+    pub move_down: bool,
+    pub move_right: bool,
+    pub move_left: bool,
+
+    pub zoom_in: bool,
+    pub zoom_out: bool,
+
+    pub mouse_pos: Option<Vector2D<f32>>,
+    pub mouse_scroll_wheel: Option<f32>,
+}
+
 pub struct Scene {
     contents: Vec<Box<dyn Draw>>,
     res: Vector2D<u32>,
@@ -39,10 +53,8 @@ impl Scene {
             contents,
             res,
             offset: Vector2D::new(0.0, 0.0),
-            // scale: 1.0,
             scale,
             min_max_scale,
-            // base_scale: 1.0,
             base_scale: (res.x as f32) / 500.0,
         }
     }
@@ -106,6 +118,42 @@ impl Scene {
 
     pub fn focus_on(&mut self, p: Vector2D<f32>) {
         self.offset = (Vector2D::new(self.res.x as f32, self.res.y as f32) / self.get_scale() / 2.0) - p
+    }
+
+    pub fn zoom_on(&mut self, amount: f32, on: Vector2D<f32>) {
+        unimplemented!()
+    }
+
+    pub fn handle_user_input(&mut self, input: SceneUserInput) {
+        if input.move_up {
+            self.set_offset(Vector2D::new(self.offset.x, self.offset.y + (5.0 / self.get_scale())));
+        }
+        if input.move_down {
+            self.set_offset(Vector2D::new(self.offset.x, self.offset.y - (5.0 / self.get_scale())));
+        }
+        if input.move_left {
+            self.set_offset(Vector2D::new(self.offset.x + (5.0 / self.get_scale()), self.offset.y));
+        }
+        if input.move_right {
+            self.set_offset(Vector2D::new(self.offset.x - (5.0 / self.get_scale()), self.offset.y));
+        }
+
+        if input.zoom_in {
+            self.change_scale(0.05)
+        }
+        if input.zoom_out {
+            self.change_scale(-0.05)
+        }
+
+        if let Some(mouse_pos) = input.mouse_pos {
+            if let Some(mouse_scroll_wheel) = input.mouse_scroll_wheel {
+                self.change_scale(mouse_scroll_wheel)
+            } else {
+            }
+        } else {
+        }
+
+        // TODO: MOUSE!!!
     }
 
     pub fn sort_contents(&mut self) {
@@ -229,32 +277,6 @@ impl Color {
     pub fn new(r: u8, g: u8, b: u8) -> Color {
         Color { r, g, b }
     }
-
-    // // Immutable access
-    // pub fn r(&self) -> &u8 {
-    //     &self.r
-    // }
-
-    // pub fn g(&self) -> &u8 {
-    //     &self.g
-    // }
-
-    // pub fn b(&self) -> &u8 {
-    //     &self.b
-    // }
-
-    // // Mutable access
-    // pub fn r_mut(&mut self) -> &mut u8 {
-    //     &mut self.r
-    // }
-
-    // pub fn g_mut(&mut self) -> &mut u8 {
-    //     &mut self.g
-    // }
-
-    // pub fn b_mut(&mut self) -> &mut u8 {
-    //     &mut self.b
-    // }
 
     // Methods
     pub fn to_u32(self) -> u32 {

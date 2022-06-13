@@ -323,7 +323,7 @@ impl PhysicsBody {
         self.pos = val
     }
     pub fn set_mass(&mut self, val: f32) {
-        self.mass = val
+        self.mass = val.abs()
     }
     pub fn set_momentum(&mut self, val: Force) {
         self.momentum = val
@@ -331,21 +331,6 @@ impl PhysicsBody {
     pub fn set_color(&mut self, val: graphics::Color) {
         self.color = val
     }
-    // pub fn pos_mut(&mut self) -> &mut Vector2D<f32> {
-    //     &mut self.pos
-    // }
-
-    // pub fn mass_mut(&mut self) -> &mut f32 {
-    //     &mut self.mass
-    // }
-
-    // pub fn momentum_mut(&mut self) -> &mut Force {
-    //     &mut self.momentum
-    // }
-
-    // pub fn color_mut(&mut self) -> &mut graphics::Color {
-    //     &mut self.color
-    // }
 
     // Methods
     pub fn move_self(&mut self) {
@@ -355,13 +340,11 @@ impl PhysicsBody {
     pub fn add_trail(&mut self) {
         self.trail.push(self.pos);
 
-        match MAX_TRAIL_LENGTH {
-            Some(v) => {
-                if self.trail.len() > v {
-                    self.trail.remove(0);
-                }
+        if let Some(v) = MAX_TRAIL_LENGTH {
+            if self.trail.len() > v {
+                self.trail.remove(0);
             }
-            None => {}
+        } else {
         }
     }
 
