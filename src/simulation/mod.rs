@@ -21,6 +21,19 @@ pub enum CollisionMode {
 
 // ----------------------------------------------------------------
 
+#[derive(Debug, Default)]
+pub struct SimulationInput {
+    pub add_body: bool,
+    pub remove_body: bool,
+    pub print_body: bool,
+
+    pub up_speed: bool,
+    pub down_speed: bool,
+
+    pub mouse_world_pos: Option<Vector2D<f32>>,
+    pub mouse_scroll_wheel: Option<f32>,
+}
+
 pub struct Simulation {
     bodies: Vec<PhysicsBody>,
     grav_const: f32,
@@ -162,6 +175,46 @@ impl Simulation {
                     self.bodies.remove(x);
                 });
             }
+        }
+    }
+
+    pub fn handle_user_input(&mut self, input: SimulationInput) {
+        if input.add_body {
+            println!("{:?}", input.mouse_world_pos);
+            if let Some(mouse_world_pos) = input.mouse_world_pos {
+            println!("{:?}", mouse_world_pos);
+            let mut new_physics_body = PhysicsBody::new_rand();
+                new_physics_body.set_pos(mouse_world_pos);
+                self.add_body(new_physics_body);
+            }
+        }
+        if input.remove_body {
+            if let Some(mouse_world_pos) = input.mouse_world_pos {
+                if let Some(index) = self.get_body_on_point_index(mouse_world_pos) {
+                    self.remove_body(index);
+                }
+            }
+        }
+        if input.print_body {
+            if let Some(mouse_world_pos) = input.mouse_world_pos {
+                let found = self.get_bodies_on_point(mouse_world_pos);
+                if !found.is_empty() {
+                    println!("{:} bodies under cursor: ", found.len());
+                    found.into_iter().for_each(|x| println!("{x}"));
+                    println!();
+                }
+            }
+        }
+
+        if input.up_speed {
+            self.set_physics_speed(self.physics_speed + 1)
+        }
+        if input.up_speed {
+            self.set_physics_speed(if self.physics_speed > 0 {
+                self.physics_speed - 1
+            } else {
+                1
+            })
         }
     }
 }

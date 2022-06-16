@@ -15,6 +15,8 @@ const NUM_OF_BODIES: usize = 10;
 // Wasm version
 // Cursor insert mode
 // Move input into struct
+// Improve focused body after remove
+// Resizing support
 
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
@@ -60,8 +62,8 @@ fn main() {
             move_left: window.is_key_down(Key::Left) || window.is_key_down(Key::A),
             zoom_in: window.is_key_down(Key::M),
             zoom_out: window.is_key_down(Key::N),
-            mouse_pos: if let Some(v) = window.get_mouse_pos(minifb::MouseMode::Discard) {
-                Some(Vector2D::new(v.0, v.1))
+            mouse_screen_pos: if let Some(v) = window.get_mouse_pos(minifb::MouseMode::Discard) {
+                Some(scene.screen_to_world_coords(Vector2D::new(v.0, v.1)))
             } else {
                 None
             },
@@ -71,7 +73,30 @@ fn main() {
                 None
             },
         });
-        keyboard_input(&mut scene, &mut simulation, &mut physics_on, &mut focused_body, &window);
+        simulation.handle_user_input(SimulationInput {
+            add_body: window.is_key_pressed(Key::Q, KeyRepeat::Yes),
+            remove_body: window.is_key_pressed(Key::E, KeyRepeat::Yes),
+            print_body: window.is_key_pressed(Key::R, KeyRepeat::Yes),
+            up_speed: window.is_key_pressed(Key::NumPadPlus, KeyRepeat::Yes),
+            down_speed: window.is_key_pressed(Key::NumPadPlus, KeyRepeat::Yes),
+            mouse_world_pos: if let Some(v) = window.get_mouse_pos(minifb::MouseMode::Discard) {
+                Some(scene.screen_to_world_coords(Vector2D::new(v.0, v.1)))
+            } else {
+                None
+            },
+            mouse_scroll_wheel: if let Some(v) = window.get_scroll_wheel() {
+                Some(v.1)
+            } else {
+                None
+            },
+        });
+
+        keyboard_input(&mut scene, &mut simulation, &mut focused_body, &window);
+
+        if window.is_key_pressed(Key::Space, KeyRepeat::No) {
+            physics_on = !physics_on;
+        }
+
         if physics_on {
             simulation.physics_tick();
         }
@@ -94,55 +119,9 @@ fn main() {
 fn keyboard_input(
     scene: &mut graphics::Scene,
     simulation: &mut Simulation,
-    physics_on: &mut bool,
     focused_body: &mut Option<usize>,
     window: &Window,
 ) {
-    if window.is_key_pressed(Key::Space, KeyRepeat::No) {
-        *physics_on = !*physics_on;
-    }
-
-    if window.is_key_pressed(Key::Q, KeyRepeat::Yes) {
-        match window.get_mouse_pos(minifb::MouseMode::Discard) {
-            Some(v) => {
-                let mut new_physics_body = PhysicsBody::new_rand();
-                new_physics_body.set_pos(scene.screen_to_world_coords(Vector2D::new(v.0, v.1)));
-
-                simulation.add_body(new_physics_body);
-            }
-            None => {}
-        }
-    }
-
-    if window.is_key_pressed(Key::E, KeyRepeat::Yes) {
-        match window.get_mouse_pos(minifb::MouseMode::Discard) {
-            Some(v) => {
-                match simulation.get_body_on_point_index(scene.screen_to_world_coords(Vector2D::new(v.0, v.1))) {
-                    Some(v) => {
-                        simulation.remove_body(v);
-                        *focused_body = None;
-                    }
-                    None => {}
-                }
-            }
-            None => {}
-        }
-    }
-
-    if window.is_key_pressed(Key::B, KeyRepeat::No) {
-        match window.get_mouse_pos(minifb::MouseMode::Discard) {
-            Some(v) => {
-                let found = simulation.get_bodies_on_point(scene.screen_to_world_coords(Vector2D::new(v.0, v.1)));
-
-                if !found.is_empty() {
-                    println!();
-                    found.into_iter().for_each(|x| println!("{x}"));
-                }
-            }
-            None => {}
-        }
-    }
-
     if window.is_key_pressed(Key::V, KeyRepeat::No) {
         match window.get_mouse_pos(minifb::MouseMode::Discard) {
             Some(v) => {
@@ -151,18 +130,6 @@ fn keyboard_input(
             }
             None => {}
         }
-    }
-
-    if window.is_key_pressed(Key::NumPadPlus, KeyRepeat::Yes) {
-        simulation.set_physics_speed(*simulation.physics_speed() + 1)
-    }
-
-    if window.is_key_pressed(Key::NumPadMinus, KeyRepeat::Yes) {
-        simulation.set_physics_speed(if *simulation.physics_speed() > 0 {
-            *simulation.physics_speed() - 1
-        } else {
-            1
-        })
     }
 
     if window.is_key_pressed(Key::R, KeyRepeat::No) {

@@ -27,7 +27,7 @@ pub struct SceneUserInput {
     pub zoom_in: bool,
     pub zoom_out: bool,
 
-    pub mouse_pos: Option<Vector2D<f32>>,
+    pub mouse_screen_pos: Option<Vector2D<f32>>,
     pub mouse_scroll_wheel: Option<f32>,
 }
 
@@ -145,7 +145,7 @@ impl Scene {
             self.change_scale(-0.05)
         }
 
-        if let Some(mouse_pos) = input.mouse_pos {
+        if let Some(mouse_screen_pos) = input.mouse_screen_pos {
             if let Some(mouse_scroll_wheel) = input.mouse_scroll_wheel {
                 self.change_scale(mouse_scroll_wheel)
             } else {
