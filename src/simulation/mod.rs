@@ -9,6 +9,8 @@ const DEFAULT_GRAV_CONST: f32 = 0.005;
 const MAX_FORCE_AMPLITUDE: Option<f32> = Some(10.0);
 const MAX_TRAIL_LENGTH: Option<usize> = Some(1000);
 
+const NUM_OF_BODIES: usize = 10;
+
 // ----------------------------------------------------------------
 
 #[derive(Debug)]
@@ -26,9 +28,12 @@ pub struct SimulationInput {
     pub add_body: bool,
     pub remove_body: bool,
     pub print_body: bool,
+    pub selected_body: bool,
 
     pub up_speed: bool,
     pub down_speed: bool,
+
+    pub reset_contents: bool,
 
     pub mouse_world_pos: Option<Vector2D<f32>>,
     pub mouse_scroll_wheel: Option<f32>,
@@ -36,6 +41,7 @@ pub struct SimulationInput {
 
 pub struct Simulation {
     bodies: Vec<PhysicsBody>,
+    selected_body: Option<usize>,
     grav_const: f32,
     physics_speed: u32,
     collision_mode: CollisionMode,
@@ -52,6 +58,7 @@ impl Simulation {
     ) -> Simulation {
         Simulation {
             bodies,
+            selected_body: None,
             grav_const: grav_const.unwrap_or(DEFAULT_GRAV_CONST),
             physics_speed: physics_speed.unwrap_or(1),
             collision_mode,
@@ -64,6 +71,10 @@ impl Simulation {
 
     pub fn physics_speed(&self) -> &u32 {
         &self.physics_speed
+    }
+
+    pub fn selected_body(&self) -> &Option<usize> {
+        &self.selected_body
     }
 
     // Mutable access
@@ -100,6 +111,14 @@ impl Simulation {
     pub fn remove_body(&mut self, i: usize) {
         if i < self.bodies.len() {
             self.bodies.remove(i);
+
+            if let Some(selected_body) = self.selected_body {
+                if selected_body == i {
+                    self.selected_body = None
+                } else if i > selected_body {
+                    self.selected_body = Some(selected_body - 1)
+                }
+            }
         }
     }
 
@@ -180,10 +199,8 @@ impl Simulation {
 
     pub fn handle_user_input(&mut self, input: SimulationInput) {
         if input.add_body {
-            println!("{:?}", input.mouse_world_pos);
             if let Some(mouse_world_pos) = input.mouse_world_pos {
-            println!("{:?}", mouse_world_pos);
-            let mut new_physics_body = PhysicsBody::new_rand();
+                let mut new_physics_body = PhysicsBody::new_rand();
                 new_physics_body.set_pos(mouse_world_pos);
                 self.add_body(new_physics_body);
             }
@@ -205,16 +222,29 @@ impl Simulation {
                 }
             }
         }
+        if input.selected_body {
+            if let Some(mouse_world_pos) = input.mouse_world_pos {
+                self.selected_body = self.get_body_on_point_index(mouse_world_pos);
+            }
+        }
 
         if input.up_speed {
             self.set_physics_speed(self.physics_speed + 1)
         }
-        if input.up_speed {
+        if input.down_speed {
             self.set_physics_speed(if self.physics_speed > 0 {
                 self.physics_speed - 1
             } else {
                 1
             })
+        }
+
+        if input.reset_contents {
+            self.selected_body = None;
+            self.bodies = (0..NUM_OF_BODIES)
+                .into_iter()
+                .map(|_| PhysicsBody::new_rand())
+                .collect();
         }
     }
 }

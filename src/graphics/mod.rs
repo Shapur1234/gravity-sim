@@ -27,6 +27,8 @@ pub struct SceneUserInput {
     pub zoom_in: bool,
     pub zoom_out: bool,
 
+    pub reset_view: bool,
+
     pub mouse_screen_pos: Option<Vector2D<f32>>,
     pub mouse_scroll_wheel: Option<f32>,
 }
@@ -43,17 +45,12 @@ pub struct Scene {
 #[allow(dead_code)]
 impl Scene {
     // Constructor
-    pub fn new(
-        contents: Vec<Box<dyn Draw>>,
-        res: Vector2D<u32>,
-        scale: f32,
-        min_max_scale: Option<Vector2D<f32>>,
-    ) -> Scene {
+    pub fn new(contents: Vec<Box<dyn Draw>>, res: Vector2D<u32>, min_max_scale: Option<Vector2D<f32>>) -> Scene {
         Scene {
             contents,
             res,
             offset: Vector2D::new(0.0, 0.0),
-            scale,
+            scale: 1.0,
             min_max_scale,
             base_scale: (res.x as f32) / 500.0,
         }
@@ -152,8 +149,11 @@ impl Scene {
             }
         } else {
         }
-
         // TODO: MOUSE!!!
+        if input.reset_view {
+            self.offset = Vector2D::new(0.0, 0.0);
+            self.scale = 1.0;
+        }
     }
 
     pub fn sort_contents(&mut self) {
